@@ -4,51 +4,44 @@
   "findings": [
     {
       "id": "R02",
-      "observed": true,
+      "observed": false,
       "response": {
-        "incidentId": "077b7166-e2b2-43a6-83c6-34f45d974f3e",
+        "incidentId": "b86fe731-cf11-44ec-a9d2-fa5b61fe5ca6",
         "status": "ACCEPTED",
         "version": 1
       },
-      "secondIncidentStatus": "PENDING_VERIFICATION"
+      "secondIncidentStatus": "ACCEPTED"
     },
     {
       "id": "R04",
-      "observed": true,
-      "secondDispatchStatus": 201,
+      "observed": false,
+      "secondDispatchStatus": 409,
       "secondDispatch": {
-        "incidentVersion": 2,
-        "dispatches": [
-          {
-            "dispatchId": "4dfad1e2-9f91-4746-a66b-92df41012fc2",
-            "unitId": "REVIEW-U",
-            "commandId": "385b7fff-060a-4349-a652-0b1dbc6b2041",
-            "status": "PENDING_CONFIRM",
-            "deadline": "2026-10-29T15:52:42.006730900Z",
-            "version": 0
-          }
-        ],
-        "warnings": [
-          "UNIT_LOCATION_STALE:REVIEW-U"
+        "code": "ALM-1003",
+        "message": "unit availability insufficient: REVIEW-U",
+        "details": [
+          "UNIT_UNAVAILABLE"
         ]
       }
     },
     {
       "id": "R05",
-      "observed": true,
-      "receiptStatus": 200,
+      "observed": false,
+      "receiptStatus": 409,
       "receipt": {
-        "dispatchId": "3747fda2-edd7-4ae2-b1bd-871e007a0835",
-        "status": "TIMEOUT",
-        "version": 1
+        "code": "ALM-1003",
+        "message": "dispatch transition denied: PENDING_CONFIRM -> TIMEOUT",
+        "details": [
+          "TIMEOUT_BY_SYSTEM_ONLY"
+        ]
       }
     },
     {
       "id": "R03",
-      "observed": true,
+      "observed": false,
       "databaseVersionReturned": 1,
       "eventLog": [
-        "2026-10-29T23:51:42.091+08:00  INFO 37652 --- [.1-18089-exec-3] alarm.event-bus                          : [outbox->bus] eventType=DispatchStatusChanged eventId=159c8e6f-8bc1-4f91-90bd-8673c79c7fa9 incidentId=077b7166-e2b2-43a6-83c6-34f45d974f3e aggregate=DISPATCH/3747fda2-edd7-4ae2-b1bd-871e007a0835 v=0 traceId=f2c6313b-2453-4744-9ab9-2d68a5a0b6c3 payload={\"eventId\":\"159c8e6f-8bc1-4f91-90bd-8673c79c7fa9\",\"eventType\":\"DispatchStatusChanged\",\"schemaVersion\":1,\"occurredAt\":\"2026-10-29T15:51:42.049269800Z\",\"aggregateType\":\"DISPATCH\",\"aggregateId\":\"3747fda2-edd7-4ae2-b1bd-871e007a0835\",\"aggregateVersion\":0,\"incidentId\":\"077b7166-e2b2-43a6-83c6-34f45d974f3e\",\"traceId\":\"f2c6313b-2453-4744-9ab9-2d68a5a0b6c3\",\"payload\":{\"dispatchId\":\"3747fda2-edd7-4ae2-b1bd-871e007a0835\",\"unitId\":\"REVIEW-U\",\"from\":\"PENDING_CONFIRM\",\"to\":\"TIMEOUT\",\"note\":null}}"
+        "2026-10-29T23:58:28.571+08:00  INFO 29072 --- [.1-18089-exec-3] alarm.event-bus                          : [outbox->bus] eventType=DispatchStatusChanged eventId=4c571012-107b-459c-87f1-5306f660c016 incidentId=a713c804-e5df-422a-b104-e1053f5301e4 aggregate=DISPATCH/3b4d7305-9ed0-4433-a190-a8b3a42775d5 v=1 traceId=84de408b-47e3-4288-9725-e7ec9cce4e7b payload={\"eventId\":\"4c571012-107b-459c-87f1-5306f660c016\",\"eventType\":\"DispatchStatusChanged\",\"schemaVersion\":1,\"occurredAt\":\"2026-10-29T15:58:28.537836700Z\",\"aggregateType\":\"DISPATCH\",\"aggregateId\":\"3b4d7305-9ed0-4433-a190-a8b3a42775d5\",\"aggregateVersion\":1,\"incidentId\":\"a713c804-e5df-422a-b104-e1053f5301e4\",\"traceId\":\"84de408b-47e3-4288-9725-e7ec9cce4e7b\",\"payload\":{\"dispatchId\":\"3b4d7305-9ed0-4433-a190-a8b3a42775d5\",\"unitId\":\"REVIEW-U\",\"from\":\"PENDING_CONFIRM\",\"to\":\"ACCEPTED\",\"note\":null}}"
       ]
     }
   ]

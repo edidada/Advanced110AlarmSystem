@@ -67,6 +67,14 @@ public class DispatchTaskRepositoryImpl implements DispatchTaskRepository {
     }
 
     @Override
+    public int countActiveByUnitId(String unitId) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM dispatch_task WHERE unit_id = ? AND status IN " + ACTIVE_SET,
+                Integer.class, unitId);
+        return count == null ? 0 : count;
+    }
+
+    @Override
     public List<DispatchTask> findExpiredPending(Instant now) {
         return jdbc.query(
                 "SELECT * FROM dispatch_task WHERE status = 'PENDING_CONFIRM' AND deadline < ? ORDER BY deadline",

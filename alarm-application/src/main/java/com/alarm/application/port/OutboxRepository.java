@@ -15,4 +15,7 @@ public interface OutboxRepository {
     void markPublished(String eventId, Instant publishedAt);
 
     long countByState(OutboxState state);
+
+    /** 按聚合 id（如派送任务 id）查询事件流水，供运维核对版本一致性。 */
+    List<OutboxEvent> listByAggregateId(String aggregateId);
 }

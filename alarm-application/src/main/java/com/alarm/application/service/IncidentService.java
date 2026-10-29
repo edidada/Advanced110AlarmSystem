@@ -108,7 +108,7 @@ public class IncidentService {
         return Mappers.toIncidentResponse(incident, tasks);
     }
 
-    /** 核实/修改/撤销/重开；条件更新 expectedVersion，冲突返回 409。 */
+    /** 核实/修改/撤销/重开；条件更新 expectedVersion，冲突返回 409。幂等作用域含目标警单 id，防止跨对象键撞车。 */
     @Transactional
     public IncidentUpdatedResponse updateIncident(OperatorContext op, String idempotencyKey,
                                                   String incidentId, UpdateIncidentRequest request) {
@@ -117,7 +117,7 @@ public class IncidentService {
         }
         Instant now = clock.now();
         VerifyAction action = request.action();
-        String scope = idempotencyScope(op, action.name() + "_INCIDENT");
+        String scope = idempotencyScope(op, action.name() + "_INCIDENT:" + incidentId);
         return idempotency.execute(scope, idempotencyKey, OP_UPDATE + ":" + action.name(),
                 request, IncidentUpdatedResponse.class, () -> {
                     Incident incident = load(incidentId);
@@ -201,14 +201,14 @@ public class IncidentService {
                 });
     }
 
-    /** 结案：要求 ACCEPTED（无派遣任务）或 PENDING_REVIEW（无活动任务），并提供复核结论。 */
+    /** 结案：要求 ACCEPTED（无派遣任务）或 PENDING_REVIEW（无活动任务），并提供复核结论。幂等作用域含目标警单 id。 */
     @Transactional
     public CloseIncidentResponse closeIncident(OperatorContext op, String idempotencyKey,
                                                String incidentId, CloseIncidentRequest request) {
         if (request == null || request.conclusion() == null || request.conclusion().isBlank()) {
             throw new ValidationException("conclusion is required to close an incident");
         }
-        String scope = idempotencyScope(op, OP_CLOSE);
+        String scope = idempotencyScope(op, OP_CLOSE + ":" + incidentId);
         return idempotency.execute(scope, idempotencyKey, OP_CLOSE, request, CloseIncidentResponse.class,
                 () -> {
                     Incident incident = load(incidentId);

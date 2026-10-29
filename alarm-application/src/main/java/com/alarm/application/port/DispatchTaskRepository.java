@@ -18,6 +18,9 @@ public interface DispatchTaskRepository {
     /** 指定警单下指定警力是否存在活动任务。 */
     boolean existsActiveByIncidentAndUnit(String incidentId, String unitId);
 
+    /** 指定警力当前活动（非终态）任务数量（跨所有警单）。 */
+    int countActiveByUnitId(String unitId);
+
     List<DispatchTask> findExpiredPending(Instant now);
 
     void insert(DispatchTask task);

@@ -415,6 +415,217 @@ class AlarmSystemFlowTest {
                 .andExpect(jsonPath("$.status").value("PENDING_REVIEW"));
     }
 
+    // ===================== 6. 评审缺陷回归（R02/R03/R04/R05） =====================
+
+    @Test
+    @Order(13)
+    void r02_sameIdempotencyKeyOnDifferentIncidentsMustNotReplayOtherResult() throws Exception {
+        String incAJson = postJson("/api/v1/incidents", """
+                {"channel":"APP","sourceId":"R02-A","priority":"HIGH","type":"TEST",
+                 "location":{"x":116.4,"y":39.9,"source":"GPS","observedAt":"%s"}}
+                """.formatted(TIME.now()), "REVIEW", "R02-A")
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String incA = jsonValue(incAJson, "$.incidentId");
+        String incBJson = postJson("/api/v1/incidents", """
+                {"channel":"APP","sourceId":"R02-B","priority":"HIGH","type":"TEST",
+                 "location":{"x":116.4,"y":39.9,"source":"GPS","observedAt":"%s"}}
+                """.formatted(TIME.now()), "REVIEW", "R02-B")
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String incB = jsonValue(incBJson, "$.incidentId");
+
+        MvcResult verifyA = mockMvc.perform(patch("/api/v1/incidents/" + incA)
+                        .header("X-Operator-Id", "REVIEW")
+                        .header("Idempotency-Key", "R02-shared")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"expectedVersion":0,"action":"VERIFY","reason":"review",
+                                 "verifiedAddress":"synthetic address"}
+                                """))
+                .andExpect(status().isOk()).andReturn();
+        assertThat(jsonValue(verifyA.getResponse().getContentAsString(), "$.incidentId")).isEqualTo(incA);
+
+        // 同操作人同 key 核实另一张警单：不得返回 A 的缓存结果
+        MvcResult verifyB = mockMvc.perform(patch("/api/v1/incidents/" + incB)
+                        .header("X-Operator-Id", "REVIEW")
+                        .header("Idempotency-Key", "R02-shared")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"expectedVersion":0,"action":"VERIFY","reason":"review",
+                                 "verifiedAddress":"synthetic address"}
+                                """))
+                .andExpect(status().isOk()).andReturn();
+        assertThat(jsonValue(verifyB.getResponse().getContentAsString(), "$.incidentId")).isEqualTo(incB);
+
+        mockMvc.perform(get("/api/v1/incidents/" + incB).header("X-Operator-Id", "REVIEW"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACCEPTED"));
+    }
+
+    @Test
+    @Order(14)
+    void r04_telemetryUpssertCannotRaiseAvailabilityDuringActiveReservation() throws Exception {
+        String incJson = postJson("/api/v1/incidents", """
+                {"channel":"APP","sourceId":"R04-A","priority":"HIGH","type":"TEST",
+                 "location":{"x":116.39,"y":39.9,"source":"GPS","observedAt":"%s"}}
+                """.formatted(TIME.now()), "REVIEW", "R04-A")
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String inc = jsonValue(incJson, "$.incidentId");
+
+        postJson("/api/v1/units", """
+                {"unitId":"R04-U","name":"synthetic unit","capabilities":["PATROL"],
+                 "availability":20,"location":{"x":116.39,"y":39.9,"source":"GPS","observedAt":"%s"}}
+                """.formatted(TIME.now()), "REVIEW", "R04-unit")
+                .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/v1/incidents/" + inc)
+                        .header("X-Operator-Id", "REVIEW")
+                        .header("Idempotency-Key", "R04-verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"expectedVersion":0,"action":"VERIFY","reason":"review",
+                                 "verifiedAddress":"synthetic address"}
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/incidents/" + inc + "/dispatches")
+                        .header("X-Operator-Id", "REVIEW")
+                        .header("Idempotency-Key", "R04-dispatch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"expectedVersion":1,"unitIds":["R04-U"],"deadlineSeconds":60}
+                                """))
+                .andExpect(status().isCreated());
+
+        // 预占期间（availability=0）遥测抬升 -> 422
+        postJson("/api/v1/units", """
+                {"unitId":"R04-U","name":"synthetic unit","capabilities":["PATROL"],
+                 "availability":20,"location":{"x":116.39,"y":39.9,"source":"GPS","observedAt":"%s"}}
+                """.formatted(TIME.now()), "REVIEW", "R04-unit-2")
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("ALM-1005"));
+
+        // 未抬升的遥测（availability 保持 ≤ 0）允许
+        postJson("/api/v1/units", """
+                {"unitId":"R04-U","name":"synthetic unit","capabilities":["PATROL"],
+                 "availability":0,"location":{"x":116.39,"y":39.9,"source":"GPS","observedAt":"%s"}}
+                """.formatted(TIME.now()), "REVIEW", "R04-unit-3")
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @Order(15)
+    void r05_receiptCannotSelfDeclareTimeout() throws Exception {
+        String incJson = postJson("/api/v1/incidents", """
+                {"channel":"APP","sourceId":"R05-A","priority":"HIGH","type":"TEST",
+                 "location":{"x":116.39,"y":39.9,"source":"GPS","observedAt":"%s"}}
+                """.formatted(TIME.now()), "REVIEW", "R05-A")
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String inc = jsonValue(incJson, "$.incidentId");
+
+        postJson("/api/v1/units", """
+                {"unitId":"R05-U","name":"synthetic unit","capabilities":["PATROL"],
+                 "availability":20,"location":{"x":116.39,"y":39.9,"source":"GPS","observedAt":"%s"}}
+                """.formatted(TIME.now()), "REVIEW", "R05-unit")
+                .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/v1/incidents/" + inc)
+                        .header("X-Operator-Id", "REVIEW")
+                        .header("Idempotency-Key", "R05-verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"expectedVersion":0,"action":"VERIFY","reason":"review",
+                                 "verifiedAddress":"synthetic address"}
+                                """))
+                .andExpect(status().isOk());
+
+        String dispJson = mockMvc.perform(post("/api/v1/incidents/" + inc + "/dispatches")
+                        .header("X-Operator-Id", "REVIEW")
+                        .header("Idempotency-Key", "R05-dispatch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"expectedVersion":1,"unitIds":["R05-U"],"deadlineSeconds":60}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String dispatchId = jsonValue(dispJson, "$.dispatches[0].dispatchId");
+        String commandId = jsonValue(dispJson, "$.dispatches[0].commandId");
+
+        mockMvc.perform(post("/api/v1/dispatches/" + dispatchId + "/receipts")
+                        .header("X-Operator-Id", "UNIT-R05-U")
+                        .header("Idempotency-Key", "R05-receipt")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"commandId":"%s","targetStatus":"TIMEOUT","expectedVersion":0}
+                                """.formatted(commandId)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("ALM-1003"))
+                .andExpect(jsonPath("$.details[0]").value("TIMEOUT_BY_SYSTEM_ONLY"));
+
+        // 系统扫描仍可以把超时变更落为终态
+        TIME.advance(Duration.ofSeconds(70));
+        mockMvc.perform(post("/api/v1/ops/dispatch-timeout/run")
+                        .header("X-Operator-Id", "OPS-01"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.processed").value(greaterThanOrEqualTo(1)));
+    }
+
+    @Test
+    @Order(16)
+    void r03_dispatchStatusChangedEventCarriesPostCasVersion() throws Exception {
+        String incJson = postJson("/api/v1/incidents", """
+                {"channel":"APP","sourceId":"R03-A","priority":"HIGH","type":"TEST",
+                 "location":{"x":116.39,"y":39.9,"source":"GPS","observedAt":"%s"}}
+                """.formatted(TIME.now()), "REVIEW", "R03-A")
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String inc = jsonValue(incJson, "$.incidentId");
+
+        postJson("/api/v1/units", """
+                {"unitId":"R03-U","name":"synthetic unit","capabilities":["PATROL"],
+                 "availability":20,"location":{"x":116.39,"y":39.9,"source":"GPS","observedAt":"%s"}}
+                """.formatted(TIME.now()), "REVIEW", "R03-unit")
+                .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/v1/incidents/" + inc)
+                        .header("X-Operator-Id", "REVIEW")
+                        .header("Idempotency-Key", "R03-verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"expectedVersion":0,"action":"VERIFY","reason":"review",
+                                 "verifiedAddress":"synthetic address"}
+                                """))
+                .andExpect(status().isOk());
+
+        String dispJson = mockMvc.perform(post("/api/v1/incidents/" + inc + "/dispatches")
+                        .header("X-Operator-Id", "REVIEW")
+                        .header("Idempotency-Key", "R03-dispatch")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"expectedVersion":1,"unitIds":["R03-U"],"deadlineSeconds":60}
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String dispatchId = jsonValue(dispJson, "$.dispatches[0].dispatchId");
+        String commandId = jsonValue(dispJson, "$.dispatches[0].commandId");
+
+        mockMvc.perform(post("/api/v1/dispatches/" + dispatchId + "/receipts")
+                .header("X-Operator-Id", "UNIT-R03-U")
+                .header("Idempotency-Key", "R03-receipt")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"commandId":"%s","targetStatus":"ACCEPTED","expectedVersion":0}
+                        """.formatted(commandId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.version").value(1));
+
+        // 回执后 DispatchStatusChanged 事件的 aggregateVersion 必须等于 CAS 后回写值(1)，不得再为 0
+        mockMvc.perform(get("/api/v1/ops/events/" + dispatchId)
+                        .header("X-Operator-Id", "REVIEW"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(greaterThanOrEqualTo(1)))
+                .andExpect(jsonPath("$[?(@.eventType == 'DispatchStatusChanged')].aggregateVersion")
+                        .value(org.hamcrest.Matchers.hasItem(1)));
+    }
+
     // ===================== helpers =====================
 
     private org.springframework.test.web.servlet.ResultActions patchIncident(String body) throws Exception {

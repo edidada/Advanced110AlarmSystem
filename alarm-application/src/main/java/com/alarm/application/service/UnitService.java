@@ -1,6 +1,7 @@
 package com.alarm.application.service;
 
 import com.alarm.application.port.Clock;
+import com.alarm.application.port.DispatchTaskRepository;
 import com.alarm.application.port.IncidentRepository;
 import com.alarm.application.port.UnitStatusRepository;
 import com.alarm.contracts.api.RecommendationItem;
@@ -33,15 +34,18 @@ public class UnitService {
 
     private final UnitStatusRepository unitRepository;
     private final IncidentRepository incidentRepository;
+    private final DispatchTaskRepository dispatchRepository;
     private final Clock clock;
     private final long locationStaleSeconds;
 
     public UnitService(UnitStatusRepository unitRepository,
                        IncidentRepository incidentRepository,
+                       DispatchTaskRepository dispatchRepository,
                        Clock clock,
                        @Value("${alarm.unit-location-stale-seconds:120}") long locationStaleSeconds) {
         this.unitRepository = unitRepository;
         this.incidentRepository = incidentRepository;
+        this.dispatchRepository = dispatchRepository;
         this.clock = clock;
         this.locationStaleSeconds = locationStaleSeconds;
     }
@@ -53,6 +57,13 @@ public class UnitService {
         List<String> capabilities = request.capabilities() == null ? List.of() : request.capabilities();
         return unitRepository.findById(request.unitId())
                 .<UnitUpsertResponse>map(existing -> {
+                    // 预占约束：存在活动派遣任务（已扣减可用额度）时，遥测 upsert 不得抬高 availability，
+                    // 否则等价于未释放地恢复额度，允许绕过原子预占占用同一警力
+                    int activeTasks = dispatchRepository.countActiveByUnitId(request.unitId());
+                    if (activeTasks > 0 && request.availability() > existing.getAvailability()) {
+                        throw new com.alarm.domain.exception.ValidationException(
+                                "availability cannot be raised while an active dispatch reservation exists");
+                    }
                     UnitStatus merged = merged(existing, request, capabilities, now);
                     int rows = unitRepository.casUpdate(merged, existing.getVersion());
                     if (rows == 0) {

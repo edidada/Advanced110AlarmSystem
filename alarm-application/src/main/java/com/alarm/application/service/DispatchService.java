@@ -194,6 +194,11 @@ public class DispatchService {
         if (!task.getCommandId().equals(request.commandId())) {
             throw new IllegalRequestException("commandId mismatch for dispatch " + dispatchId);
         }
+        if (request.targetStatus() == DispatchStatus.TIMEOUT) {
+            // TIMEOOUT 仅由系统超时扫描产生，终端不得自声明
+            throw new InvalidTransitionException("TIMEOUT_BY_SYSTEM_ONLY",
+                    task.getStatus(), DispatchStatus.TIMEOUT);
+        }
         DispatchStatus from = task.getStatus();
         DispatchStatus to = request.targetStatus();
         DispatchStateMachine.requireTransition(from, to);
@@ -204,14 +209,16 @@ public class DispatchService {
             throw new InvalidTransitionException("DEADLINE_PASSED", from, to);
         }
 
-        int rows = dispatchRepository.casUpdate(updated(task, to, now), request.expectedVersion());
+        DispatchTask updatedTask = updated(task, to, now);
+        int rows = dispatchRepository.casUpdate(updatedTask, request.expectedVersion());
         if (rows == 0) {
             throw new OptimisticLockConflictException(request.expectedVersion());
         }
         task.setStatus(to);
+        task.setVersion(request.expectedVersion() + 1);
 
         applyTerminalConsequences(op, task, from, to, now);
-        return new ReceiptResponse(dispatchId, to, request.expectedVersion() + 1);
+        return new ReceiptResponse(dispatchId, to, task.getVersion());
     }
 
     /** 取消派遣（非终态可取消；理由必填）。 */
@@ -231,13 +238,15 @@ public class DispatchService {
                     }
                     DispatchStateMachine.requireTransition(from, DispatchStatus.CANCELLED);
                     Instant now = clock.now();
-                    int rows = dispatchRepository.casUpdate(updated(task, DispatchStatus.CANCELLED, now),
-                            request.expectedVersion());
+                    DispatchTask updatedTask = updated(task, DispatchStatus.CANCELLED, now);
+                    int rows = dispatchRepository.casUpdate(updatedTask, request.expectedVersion());
                     if (rows == 0) {
                         throw new OptimisticLockConflictException(request.expectedVersion());
                     }
+                    task.setStatus(DispatchStatus.CANCELLED);
+                    task.setVersion(request.expectedVersion() + 1);
                     applyTerminalConsequences(op, task, from, DispatchStatus.CANCELLED, now);
-                    return new ReceiptResponse(dispatchId, DispatchStatus.CANCELLED, request.expectedVersion() + 1);
+                    return new ReceiptResponse(dispatchId, DispatchStatus.CANCELLED, task.getVersion());
                 });
     }
 
@@ -253,6 +262,7 @@ public class DispatchService {
                 continue; // 并发修改（回执/取消），跳过本轮，下轮再核
             }
             task.setStatus(DispatchStatus.TIMEOUT);
+            task.setVersion(task.getVersion() + 1);
             applyTerminalConsequences(op, task, DispatchStatus.PENDING_CONFIRM, DispatchStatus.TIMEOUT, now);
             handled++;
         }

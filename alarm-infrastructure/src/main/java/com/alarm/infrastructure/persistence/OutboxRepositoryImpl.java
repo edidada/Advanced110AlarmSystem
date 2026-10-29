@@ -69,6 +69,12 @@ public class OutboxRepositoryImpl implements OutboxRepository {
         return count == null ? 0 : count;
     }
 
+    @Override
+    public List<OutboxEvent> listByAggregateId(String aggregateId) {
+        return jdbc.query("SELECT * FROM outbox_event WHERE aggregate_id = ? ORDER BY created_at, event_id",
+                MAPPER, aggregateId);
+    }
+
     private static Instant toInstant(Timestamp ts) {
         return ts == null ? null : ts.toInstant();
     }

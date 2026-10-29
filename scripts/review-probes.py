@@ -2,6 +2,12 @@
 
 Run after mvn -B verify: python scripts/review-probes.py
 These are review probes: observed=true confirms a problem, not acceptance.
+Updated for the post-fix contract (commit addressing R02/R03/R04/R05):
+- R02: same idempotency key across different incidents must not replay the other result.
+- R04: telemetry upsert cannot raise availability while an active reservation exists; the
+       second incident's dispatch must then fail instead of reusing the reserved unit.
+- R05: terminal receipts cannot self-declare TIMEOUT (system scan only).
+- R03: DispatchStatusChanged aggregateVersion must equal the CAS-written DB version.
 """
 import json
 import os
@@ -80,17 +86,27 @@ def main():
                 {"expectedVersion": 1, "unitIds": ["REVIEW-U"]}, "dispatch-a")
             assert code == 201, dispatch
             task = dispatch["dispatches"][0]
-            # A telemetry upsert restores capacity while an active reservation exists.
-            assert call("POST", "/units", unit)[0] == 200
-            assert verify(b, "verify-b")[0] == 200
+            # R04: telemetry upsert must be rejected while the active reservation holds;
+            # the reserved unit must therefore not be reusable by the second incident.
+            code, rejected_upsert = call("POST", "/units", unit, key="telemetry-raise")
+            assert code == 422, ("telemetry raise during active reservation must be 422",
+                                 code, rejected_upsert)
+            # incident b is already ACCEPTED via the successful shared-verify call (R02 fix path)
             code, second = call("POST", "/incidents/" + b + "/dispatches",
                 {"expectedVersion": 1, "unitIds": ["REVIEW-U"]}, "dispatch-b")
             findings.append({"id": "R04", "observed": code == 201,
                 "secondDispatchStatus": code, "secondDispatch": second})
+            # R05: terminal receipts cannot self-declare TIMEOUT.
             code, receipt = call("POST", "/dispatches/" + task["dispatchId"] + "/receipts",
-                {"commandId": task["commandId"], "targetStatus": "TIMEOUT", "expectedVersion": 0})
+                {"commandId": task["commandId"], "targetStatus": "TIMEOUT", "expectedVersion": 0},
+                "receipt-timeout")
             findings.append({"id": "R05", "observed": code == 200,
                 "receiptStatus": code, "receipt": receipt})
+            # legitimate receipt so R03 can check event version semantics
+            code, accept = call("POST", "/dispatches/" + task["dispatchId"] + "/receipts",
+                {"commandId": task["commandId"], "targetStatus": "ACCEPTED", "expectedVersion": 0},
+                "receipt-accept")
+            assert code == 200, (code, accept)
             assert call("POST", "/ops/outbox/run", {})[0] == 200
             time.sleep(0.2)
             lines = log_path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -98,7 +114,7 @@ def main():
                        and task["dispatchId"] in line]
             findings.append({"id": "R03", "observed": bool(changed) and
                 any('"aggregateVersion":0' in line for line in changed),
-                "databaseVersionReturned": receipt.get("version"), "eventLog": changed})
+                "databaseVersionReturned": accept.get("version"), "eventLog": changed})
             (OUT / "review-probes.json").write_text(json.dumps({
                 "baseline": "ead3ff52f70155e8a649785f0f20b3bcd753f1f2",
                 "note": "observed=true confirms a review defect; synthetic data only",
