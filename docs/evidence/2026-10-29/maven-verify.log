@@ -1,0 +1,197 @@
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO]
+[INFO] Advanced 110 Alarm System                                          [pom]
+[INFO] alarm-contracts                                                    [jar]
+[INFO] alarm-domain                                                       [jar]
+[INFO] alarm-application                                                  [jar]
+[INFO] alarm-infrastructure                                               [jar]
+[INFO] alarm-server                                                       [jar]
+[INFO]
+[INFO] ----------------< com.alarm:advanced-110-alarm-system >-----------------
+[INFO] Building Advanced 110 Alarm System 0.1.0-SNAPSHOT                  [1/6]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO]
+[INFO] ---------------------< com.alarm:alarm-contracts >----------------------
+[INFO] Building alarm-contracts 0.1.0-SNAPSHOT                            [2/6]
+[INFO]   from alarm-contracts\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ alarm-contracts ---
+[INFO] skip non existing resourceDirectory D:\develops\git\github\Advanced110AlarmSystem\alarm-contracts\src\main\resources
+[INFO] skip non existing resourceDirectory D:\develops\git\github\Advanced110AlarmSystem\alarm-contracts\src\main\resources
+[INFO]
+[INFO] --- compiler:3.13.0:compile (default-compile) @ alarm-contracts ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ alarm-contracts ---
+[INFO] skip non existing resourceDirectory D:\develops\git\github\Advanced110AlarmSystem\alarm-contracts\src\test\resources
+[INFO]
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ alarm-contracts ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.2.5:test (default-test) @ alarm-contracts ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ alarm-contracts ---
+[INFO]
+[INFO] -----------------------< com.alarm:alarm-domain >-----------------------
+[INFO] Building alarm-domain 0.1.0-SNAPSHOT                               [3/6]
+[INFO]   from alarm-domain\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ alarm-domain ---
+[INFO] skip non existing resourceDirectory D:\develops\git\github\Advanced110AlarmSystem\alarm-domain\src\main\resources
+[INFO] skip non existing resourceDirectory D:\develops\git\github\Advanced110AlarmSystem\alarm-domain\src\main\resources
+[INFO]
+[INFO] --- compiler:3.13.0:compile (default-compile) @ alarm-domain ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ alarm-domain ---
+[INFO] skip non existing resourceDirectory D:\develops\git\github\Advanced110AlarmSystem\alarm-domain\src\test\resources
+[INFO]
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ alarm-domain ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO]
+[INFO] --- surefire:3.2.5:test (default-test) @ alarm-domain ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO]
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.alarm.domain.DispatchStateMachineTest
+[INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.076 s -- in com.alarm.domain.DispatchStateMachineTest
+[INFO] Running com.alarm.domain.GeoUtilsTest
+[INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.013 s -- in com.alarm.domain.GeoUtilsTest
+[INFO] Running com.alarm.domain.IncidentStateMachineTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in com.alarm.domain.IncidentStateMachineTest
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ alarm-domain ---
+[INFO]
+[INFO] --------------------< com.alarm:alarm-application >---------------------
+[INFO] Building alarm-application 0.1.0-SNAPSHOT                          [4/6]
+[INFO]   from alarm-application\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ alarm-application ---
+[INFO] skip non existing resourceDirectory D:\develops\git\github\Advanced110AlarmSystem\alarm-application\src\main\resources
+[INFO] skip non existing resourceDirectory D:\develops\git\github\Advanced110AlarmSystem\alarm-application\src\main\resources
+[INFO]
+[INFO] --- compiler:3.13.0:compile (default-compile) @ alarm-application ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ alarm-application ---
+[INFO] skip non existing resourceDirectory D:\develops\git\github\Advanced110AlarmSystem\alarm-application\src\test\resources
+[INFO]
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ alarm-application ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.2.5:test (default-test) @ alarm-application ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ alarm-application ---
+[INFO]
+[INFO] -------------------< com.alarm:alarm-infrastructure >-------------------
+[INFO] Building alarm-infrastructure 0.1.0-SNAPSHOT                       [5/6]
+[INFO]   from alarm-infrastructure\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ alarm-infrastructure ---
+[INFO] skip non existing resourceDirectory D:\develops\git\github\Advanced110AlarmSystem\alarm-infrastructure\src\main\resources
+[INFO] skip non existing resourceDirectory D:\develops\git\github\Advanced110AlarmSystem\alarm-infrastructure\src\main\resources
+[INFO]
+[INFO] --- compiler:3.13.0:compile (default-compile) @ alarm-infrastructure ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ alarm-infrastructure ---
+[INFO] skip non existing resourceDirectory D:\develops\git\github\Advanced110AlarmSystem\alarm-infrastructure\src\test\resources
+[INFO]
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ alarm-infrastructure ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.2.5:test (default-test) @ alarm-infrastructure ---
+[INFO] No tests to run.
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ alarm-infrastructure ---
+[INFO]
+[INFO] -----------------------< com.alarm:alarm-server >-----------------------
+[INFO] Building alarm-server 0.1.0-SNAPSHOT                               [6/6]
+[INFO]   from alarm-server\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ alarm-server ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO]
+[INFO] --- compiler:3.13.0:compile (default-compile) @ alarm-server ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ alarm-server ---
+[INFO] skip non existing resourceDirectory D:\develops\git\github\Advanced110AlarmSystem\alarm-server\src\test\resources
+[INFO]
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ alarm-server ---
+[INFO] Recompiling the module because of added or removed source files.
+[INFO] Compiling 1 source file with javac [debug parameters release 17] to target\test-classes
+[INFO]
+[INFO] --- surefire:3.2.5:test (default-test) @ alarm-server ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO]
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.alarm.AlarmSystemFlowTest
+23:50:37.396 [main] INFO org.springframework.boot.test.context.SpringBootTestContextBootstrapper -- Found @SpringBootConfiguration com.alarm.AlarmServerApplication for test class com.alarm.AlarmSystemFlowTest
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::               (v3.3.12)
+
+2026-10-29T23:50:37.864+08:00  INFO 32840 --- [           main] com.alarm.AlarmSystemFlowTest            : Starting AlarmSystemFlowTest using Java 17.0.12 with PID 32840 (started by wdidada in D:\develops\git\github\Advanced110AlarmSystem\alarm-server)
+2026-10-29T23:50:37.866+08:00  INFO 32840 --- [           main] com.alarm.AlarmSystemFlowTest            : No active profile set, falling back to 1 default profile: "default"
+2026-10-29T23:50:38.934+08:00  INFO 32840 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-10-29T23:50:39.170+08:00  INFO 32840 --- [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection conn0: url=jdbc:h2:mem:alarm_flow user=SA
+2026-10-29T23:50:39.172+08:00  INFO 32840 --- [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-10-29T23:50:40.436+08:00  INFO 32840 --- [           main] o.s.b.t.m.w.SpringBootMockServletContext : Initializing Spring TestDispatcherServlet ''
+2026-10-29T23:50:40.438+08:00  INFO 32840 --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Initializing Servlet ''
+2026-10-29T23:50:40.442+08:00  INFO 32840 --- [           main] o.s.t.web.servlet.TestDispatcherServlet  : Completed initialization in 1 ms
+2026-10-29T23:50:40.503+08:00  INFO 32840 --- [           main] com.alarm.AlarmSystemFlowTest            : Started AlarmSystemFlowTest in 2.94 seconds (process running for 3.902)
+Java HotSpot(TM) 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended
+[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 6.002 s -- in com.alarm.AlarmSystemFlowTest
+[INFO]
+[INFO] Results:
+[INFO]
+[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0
+[INFO]
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ alarm-server ---
+[INFO]
+[INFO] --- spring-boot:3.3.12:repackage (repackage) @ alarm-server ---
+[INFO] Replacing main artifact D:\develops\git\github\Advanced110AlarmSystem\alarm-server\target\alarm-server-0.1.0-SNAPSHOT.jar with repackaged archive, adding nested dependencies in BOOT-INF/.
+[INFO] The original artifact has been renamed to D:\develops\git\github\Advanced110AlarmSystem\alarm-server\target\alarm-server-0.1.0-SNAPSHOT.jar.original
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for Advanced 110 Alarm System 0.1.0-SNAPSHOT:
+[INFO]
+[INFO] Advanced 110 Alarm System .......................... SUCCESS [  0.002 s]
+[INFO] alarm-contracts .................................... SUCCESS [  0.803 s]
+[INFO] alarm-domain ....................................... SUCCESS [  0.891 s]
+[INFO] alarm-application .................................. SUCCESS [  0.122 s]
+[INFO] alarm-infrastructure ............................... SUCCESS [  0.169 s]
+[INFO] alarm-server ....................................... SUCCESS [  9.543 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  11.876 s
+[INFO] Finished at: 2026-10-29T23:50:43+08:00
+[INFO] ------------------------------------------------------------------------

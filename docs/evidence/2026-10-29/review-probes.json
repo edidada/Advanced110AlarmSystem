@@ -1,0 +1,55 @@
+{
+  "baseline": "ead3ff52f70155e8a649785f0f20b3bcd753f1f2",
+  "note": "observed=true confirms a review defect; synthetic data only",
+  "findings": [
+    {
+      "id": "R02",
+      "observed": true,
+      "response": {
+        "incidentId": "077b7166-e2b2-43a6-83c6-34f45d974f3e",
+        "status": "ACCEPTED",
+        "version": 1
+      },
+      "secondIncidentStatus": "PENDING_VERIFICATION"
+    },
+    {
+      "id": "R04",
+      "observed": true,
+      "secondDispatchStatus": 201,
+      "secondDispatch": {
+        "incidentVersion": 2,
+        "dispatches": [
+          {
+            "dispatchId": "4dfad1e2-9f91-4746-a66b-92df41012fc2",
+            "unitId": "REVIEW-U",
+            "commandId": "385b7fff-060a-4349-a652-0b1dbc6b2041",
+            "status": "PENDING_CONFIRM",
+            "deadline": "2026-10-29T15:52:42.006730900Z",
+            "version": 0
+          }
+        ],
+        "warnings": [
+          "UNIT_LOCATION_STALE:REVIEW-U"
+        ]
+      }
+    },
+    {
+      "id": "R05",
+      "observed": true,
+      "receiptStatus": 200,
+      "receipt": {
+        "dispatchId": "3747fda2-edd7-4ae2-b1bd-871e007a0835",
+        "status": "TIMEOUT",
+        "version": 1
+      }
+    },
+    {
+      "id": "R03",
+      "observed": true,
+      "databaseVersionReturned": 1,
+      "eventLog": [
+        "2026-10-29T23:51:42.091+08:00  INFO 37652 --- [.1-18089-exec-3] alarm.event-bus                          : [outbox->bus] eventType=DispatchStatusChanged eventId=159c8e6f-8bc1-4f91-90bd-8673c79c7fa9 incidentId=077b7166-e2b2-43a6-83c6-34f45d974f3e aggregate=DISPATCH/3747fda2-edd7-4ae2-b1bd-871e007a0835 v=0 traceId=f2c6313b-2453-4744-9ab9-2d68a5a0b6c3 payload={\"eventId\":\"159c8e6f-8bc1-4f91-90bd-8673c79c7fa9\",\"eventType\":\"DispatchStatusChanged\",\"schemaVersion\":1,\"occurredAt\":\"2026-10-29T15:51:42.049269800Z\",\"aggregateType\":\"DISPATCH\",\"aggregateId\":\"3747fda2-edd7-4ae2-b1bd-871e007a0835\",\"aggregateVersion\":0,\"incidentId\":\"077b7166-e2b2-43a6-83c6-34f45d974f3e\",\"traceId\":\"f2c6313b-2453-4744-9ab9-2d68a5a0b6c3\",\"payload\":{\"dispatchId\":\"3747fda2-edd7-4ae2-b1bd-871e007a0835\",\"unitId\":\"REVIEW-U\",\"from\":\"PENDING_CONFIRM\",\"to\":\"TIMEOUT\",\"note\":null}}"
+      ]
+    }
+  ]
+}
