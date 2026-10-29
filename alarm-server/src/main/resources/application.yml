@@ -1,0 +1,25 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:alarm;DB_CLOSE_DELAY=-1;MODE=LEGACY}
+    driver-class-name: org.h2.Driver
+    username: ${SPRING_DATASOURCE_USERNAME:sa}
+    password: ""
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+alarm:
+  unit-location-stale-seconds: ${ALARM_UNIT_LOCATION_STALE_SECONDS:120}
+  dispatch-default-deadline-seconds: ${ALARM_DISPATCH_DEFAULT_TIMEOUT_SECONDS:60}
+  outbox-batch-size: ${ALARM_OUTBOX_BATCH_SIZE:100}
+
+logging:
+  level:
+    alarm.event-bus: INFO
