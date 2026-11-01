@@ -626,6 +626,49 @@ class AlarmSystemFlowTest {
                         .value(org.hamcrest.Matchers.hasItem(1)));
     }
 
+    @Test
+    @Order(17)
+    void listIncidents_paginationAndStatusFilter() throws Exception {
+        // 此前用例已产生的警单 + 新建两条不同状态的警单
+        String createdJson = postJson("/api/v1/incidents", """
+                {"channel":"SMS","sourceId":"LIST-001","priority":"MEDIUM","type":"TEST"}
+                """, "REVIEW", "LIST-001")
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        String listInc1 = jsonValue(createdJson, "$.incidentId");
+
+        mockMvc.perform(get("/api/v1/incidents")
+                        .header("X-Operator-Id", "REVIEW")
+                        .param("limit", "10")
+                        .param("offset", "0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.limit").value(10))
+                .andExpect(jsonPath("$.total", greaterThanOrEqualTo(2)))
+                .andExpect(jsonPath("$.items.length()", greaterThanOrEqualTo(2)))
+                .andExpect(jsonPath("$.items[0].incidentId").exists())
+                .andExpect(jsonPath("$.items[0].status").exists());
+
+        // 状态过滤：PENDING_VERIFICATION 列表必须包含未核实的新警单且只含该状态
+        org.springframework.test.web.servlet.MvcResult filtered = mockMvc.perform(
+                        get("/api/v1/incidents")
+                                .header("X-Operator-Id", "REVIEW")
+                                .param("status", "PENDING_VERIFICATION"))
+                .andExpect(status().isOk())
+                .andReturn();
+        String filteredJson = filtered.getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(filteredJson).contains(listInc1);
+        org.assertj.core.api.Assertions.assertThat(
+                com.jayway.jsonpath.JsonPath.<List<String>>read(filteredJson, "$.items[*].status"))
+                .doesNotContain("CLOSED");
+
+        // 非法状态 -> 400；非法 limit -> 400
+        mockMvc.perform(get("/api/v1/incidents")
+                        .header("X-Operator-Id", "REVIEW").param("status", "NOT_A_STATUS"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/v1/incidents")
+                        .header("X-Operator-Id", "REVIEW").param("limit", "0"))
+                .andExpect(status().isBadRequest());
+    }
+
     // ===================== helpers =====================
 
     private org.springframework.test.web.servlet.ResultActions patchIncident(String body) throws Exception {

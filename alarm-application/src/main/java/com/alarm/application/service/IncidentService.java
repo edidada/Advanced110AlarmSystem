@@ -8,6 +8,7 @@ import com.alarm.contracts.api.CloseIncidentRequest;
 import com.alarm.contracts.api.CloseIncidentResponse;
 import com.alarm.contracts.api.CreateIncidentRequest;
 import com.alarm.contracts.api.IncidentCreatedResponse;
+import com.alarm.contracts.api.IncidentListResponse;
 import com.alarm.contracts.api.IncidentResponse;
 import com.alarm.contracts.api.IncidentUpdatedResponse;
 import com.alarm.contracts.api.UpdateIncidentRequest;
@@ -36,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,6 +48,8 @@ public class IncidentService {
     public static final String OP_CREATE = "CREATE_INCIDENT";
     public static final String OP_UPDATE = "UPDATE_INCIDENT";
     public static final String OP_CLOSE = "CLOSE_INCIDENT";
+    public static final int DEFAULT_LIST_LIMIT = 50;
+    public static final int MAX_LIST_LIMIT = 200;
 
     private final IncidentRepository incidentRepository;
     private final DispatchTaskRepository dispatchTaskRepository;
@@ -106,6 +110,33 @@ public class IncidentService {
         Incident incident = load(incidentId);
         List<DispatchTask> tasks = dispatchTaskRepository.listByIncidentId(incident.getId());
         return Mappers.toIncidentResponse(incident, tasks);
+    }
+
+    /** 警单列表（操作台左侧列表）：状态可选过滤 + 创建时间倒序分页。 */
+    @Transactional(readOnly = true)
+    public IncidentListResponse listIncidents(String statusCode, Integer limit, Integer offset) {
+        IncidentStatus status = null;
+        if (statusCode != null && !statusCode.isBlank()) {
+            try {
+                status = IncidentStatus.valueOf(statusCode.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalRequestException("status must be one of "
+                        + Arrays.toString(IncidentStatus.values()));
+            }
+        }
+        int size = limit == null ? DEFAULT_LIST_LIMIT : limit;
+        if (size < 1 || size > MAX_LIST_LIMIT) {
+            throw new IllegalRequestException("limit must be within [1," + MAX_LIST_LIMIT + "]");
+        }
+        int from = offset == null ? 0 : offset;
+        if (from < 0) {
+            throw new IllegalRequestException("offset must be >= 0");
+        }
+        List<Incident> rows = incidentRepository.listPaged(status, size, from);
+        long total = incidentRepository.countPaged(status);
+        return new IncidentListResponse(
+                rows.stream().map(Mappers::toIncidentSummary).toList(),
+                total, size, from);
     }
 
     /** 核实/修改/撤销/重开；条件更新 expectedVersion，冲突返回 409。幂等作用域含目标警单 id，防止跨对象键撞车。 */

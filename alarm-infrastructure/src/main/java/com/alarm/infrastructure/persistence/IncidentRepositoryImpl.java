@@ -7,6 +7,7 @@ import com.alarm.contracts.enums.IncidentStatus;
 import com.alarm.contracts.enums.LocationSource;
 import com.alarm.contracts.enums.Priority;
 import com.alarm.domain.model.Incident;
+import com.alarm.contracts.enums.IncidentStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -64,6 +65,26 @@ public class IncidentRepositoryImpl implements IncidentRepository {
                 "SELECT * FROM incident WHERE channel = ? AND source_id = ?", MAPPER,
                 channel.name(), sourceId);
         return list.stream().findFirst();
+    }
+
+    @Override
+    public List<Incident> listPaged(IncidentStatus status, int limit, int offset) {
+        if (status == null) {
+            return jdbc.query(
+                    "SELECT * FROM incident ORDER BY created_at DESC, id LIMIT ? OFFSET ?",
+                    MAPPER, limit, offset);
+        }
+        return jdbc.query(
+                "SELECT * FROM incident WHERE status = ? ORDER BY created_at DESC, id LIMIT ? OFFSET ?",
+                MAPPER, status.name(), limit, offset);
+    }
+
+    @Override
+    public long countPaged(IncidentStatus status) {
+        Long count = status == null
+                ? jdbc.queryForObject("SELECT COUNT(*) FROM incident", Long.class)
+                : jdbc.queryForObject("SELECT COUNT(*) FROM incident WHERE status = ?", Long.class, status.name());
+        return count == null ? 0 : count;
     }
 
     @Override

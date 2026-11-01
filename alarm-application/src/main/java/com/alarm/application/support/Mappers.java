@@ -3,6 +3,7 @@ package com.alarm.application.support;
 import com.alarm.contracts.api.CreatedDispatchItem;
 import com.alarm.contracts.api.DispatchSummary;
 import com.alarm.contracts.api.IncidentResponse;
+import com.alarm.contracts.api.IncidentSummary;
 import com.alarm.domain.model.DispatchTask;
 import com.alarm.domain.model.Incident;
 
@@ -29,6 +30,21 @@ public final class Mappers {
                 incident.getUpdatedAt(),
                 incident.getClosedAt(),
                 tasks.stream().map(Mappers::toDispatchSummary).toList());
+    }
+
+    /** 列表场景精简投影（不带派遣子项与正文扩展字段）。 */
+    public static IncidentSummary toIncidentSummary(Incident incident) {
+        return new IncidentSummary(
+                incident.getId(),
+                incident.getChannel(),
+                incident.getSourceId(),
+                incident.getStatus(),
+                incident.getPriority(),
+                incident.getType(),
+                incident.getDescription(),
+                incident.getVersion(),
+                incident.getCreatedAt(),
+                incident.getUpdatedAt());
     }
 
     public static DispatchSummary toDispatchSummary(DispatchTask task) {

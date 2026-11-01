@@ -7,6 +7,7 @@ import com.alarm.contracts.api.CloseIncidentRequest;
 import com.alarm.contracts.api.CloseIncidentResponse;
 import com.alarm.contracts.api.CreateIncidentRequest;
 import com.alarm.contracts.api.IncidentCreatedResponse;
+import com.alarm.contracts.api.IncidentListResponse;
 import com.alarm.contracts.api.IncidentResponse;
 import com.alarm.contracts.api.IncidentUpdatedResponse;
 import com.alarm.contracts.api.RecommendationPreviewRequest;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** 警单与推荐接口。 */
@@ -46,6 +48,17 @@ public class IncidentController {
         String key = WebSupport.requireIdempotencyKey(idempotencyKey);
         IncidentCreatedResponse response = incidentService.createIncident(op, key, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/incidents")
+    public IncidentListResponse list(
+            @RequestHeader(value = WebSupport.HEADER_OPERATOR, required = false) String operator,
+            @RequestHeader(value = WebSupport.HEADER_TRACE, required = false) String traceId,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "limit", defaultValue = "50") Integer limit,
+            @RequestParam(name = "offset", defaultValue = "0") Integer offset) {
+        WebSupport.operator(operator, traceId);
+        return incidentService.listIncidents(status, limit, offset);
     }
 
     @GetMapping("/incidents/{id}")

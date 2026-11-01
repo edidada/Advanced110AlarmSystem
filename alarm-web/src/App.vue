@@ -53,56 +53,96 @@
       <pre v-if="lastResult.create" class="result">{{ lastResult.create }}</pre>
     </section>
 
-    <!-- ============ 警单详情与操作 ============ -->
+    <!-- ============ 警单列表与操作 ============ -->
     <section v-show="active === 'detail'" class="card">
-      <h2>警单详情 <small class="hint">GET /api/v1/incidents/{id}</small></h2>
-      <form class="row" @submit.prevent="loadIncident">
-        <input v-model="detail.incidentId" placeholder="警单 incidentId（UUID）" required />
-        <button class="primary" type="submit">查询</button>
-      </form>
-      <template v-if="detail.data">
-        <pre class="result">{{ detail.data }}</pre>
-        <div class="grid actions">
-          <fieldset class="span2">
-            <legend>核实 / 修改 / 撤销 / 重开 · PATCH /api/v1/incidents/{id}（乐观锁）</legend>
-            <label>动作
-              <select v-model="patchF.action">
-                <option value="VERIFY">VERIFY（核实受理，需 verifiedAddress+reason）</option>
-                <option value="UPDATE">UPDATE（字段修改）</option>
-                <option value="CANCEL">CANCEL（撤销警单）</option>
-                <option value="REOPEN">REOPEN（重开）</option>
-              </select>
-            </label>
-            <label>expectedVersion *
-              <input v-model.number="patchF.expectedVersion" type="number" min="0" required />
-            </label>
-            <label>reason *
-              <input v-model="patchF.reason" placeholder="核实/撤销/重开必填" />
-            </label>
-            <label>verifiedAddress<br />
-              <input v-model="patchF.verifiedAddress" placeholder="核实受理必填" />
-            </label>
-            <label>优先级
-              <select v-model="patchF.priority"><option value="">(不变)</option><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select>
-            </label>
-            <label class="span2">描述
-              <input v-model="patchF.description" placeholder="覆盖描述（可空）" />
-            </label>
-            <button class="primary" @click.prevent="patchIncident" :disabled="busy">提交 PATCH</button>
-          </fieldset>
-          <fieldset class="span2">
-            <legend>结案 · POST /api/v1/incidents/{id}/close</legend>
-            <label>expectedVersion *
-              <input v-model.number="closeF.expectedVersion" type="number" min="0" required />
-            </label>
-            <label class="span2">结案结论 *
-              <input v-model="closeF.conclusion" required placeholder="处置结论摘要" />
-            </label>
-            <button class="primary" @click.prevent="closeIncident" :disabled="busy">结案</button>
-          </fieldset>
+      <h2>警单操作 <small class="hint">左侧：GET /api/v1/incidents?status=（更新时间倒序）· 右侧：GET/PATCH/close</small></h2>
+      <div class="detail-layout">
+        <!-- 左：警单列表 -->
+        <div class="list-pane">
+          <div class="row" style="margin-bottom:8px">
+            <select v-model="listF.status" style="flex:1">
+              <option value="">全部状态</option>
+              <option>PENDING_VERIFICATION</option><option>ACCEPTED</option><option>DISPATCHING</option>
+              <option>PENDING_REVIEW</option><option>CLOSED</option><option>CANCELLED</option>
+            </select>
+            <button @click="loadList" :disabled="listF.loading">刷新</button>
+          </div>
+          <div style="max-height:460px; overflow-y:auto;">
+            <table class="tbl" style="font-size:12px">
+              <thead><tr><th>来源</th><th>状态</th><th>级别</th><th>版本</th></tr></thead>
+              <tbody>
+                <tr v-for="i in listF.items" :key="i.incidentId"
+                    :class="{ selected: i.incidentId === detail.incidentId }"
+                    style="cursor:pointer" @click="selectIncident(i.incidentId)">
+                  <td :title="i.incidentId">{{ i.sourceId }}</td>
+                  <td><span :class="['st', i.status]">{{ i.status }}</span></td>
+                  <td>{{ i.priority }}</td>
+                  <td>v{{ i.version }}</td>
+                </tr>
+                <tr v-if="!listF.items.length"><td colspan="4" style="text-align:center;color:#93a1b5">{{ listF.loading ? '加载中…' : '无警单' }}</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="hint" style="margin-top:6px">
+            命中 {{ listF.items.length }} / 共 {{ listF.total }} 条
+            <template v-if="listF.total > listF.items.length">
+              — <a href="javascript:void(0)" @click="listMore">继续加载</a>
+            </template>
+          </div>
         </div>
-        <pre v-if="lastResult.mutation" class="result">{{ lastResult.mutation }}</pre>
-      </template>
+
+        <!-- 右：详情 + 操作 -->
+        <div class="detail-pane">
+          <form class="row" @submit.prevent="loadIncident">
+            <input v-model="detail.incidentId" placeholder="警单 incidentId（UUID），点击左侧列表自动填入" />
+            <button class="primary" type="submit">查询</button>
+          </form>
+          <template v-if="detail.data">
+            <pre class="result">{{ detail.data }}</pre>
+            <div class="grid actions">
+              <fieldset class="span2">
+                <legend>核实 / 修改 / 撤销 / 重开 · PATCH /api/v1/incidents/{id}（乐观锁）</legend>
+                <label>动作
+                  <select v-model="patchF.action">
+                    <option value="VERIFY">VERIFY（核实受理，需 verifiedAddress+reason）</option>
+                    <option value="UPDATE">UPDATE（字段修改）</option>
+                    <option value="CANCEL">CANCEL（撤销警单）</option>
+                    <option value="REOPEN">REOPEN（重开）</option>
+                  </select>
+                </label>
+                <label>expectedVersion *
+                  <input v-model.number="patchF.expectedVersion" type="number" min="0" required />
+                </label>
+                <label>reason *
+                  <input v-model="patchF.reason" placeholder="核实/撤销/重开必填" />
+                </label>
+                <label>verifiedAddress<br />
+                  <input v-model="patchF.verifiedAddress" placeholder="核实受理必填" />
+                </label>
+                <label>优先级
+                  <select v-model="patchF.priority"><option value="">(不变)</option><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select>
+                </label>
+                <label class="span2">描述
+                  <input v-model="patchF.description" placeholder="覆盖描述（可空）" />
+                </label>
+                <button class="primary" @click.prevent="patchIncident" :disabled="busy">提交 PATCH</button>
+              </fieldset>
+              <fieldset class="span2">
+                <legend>结案 · POST /api/v1/incidents/{id}/close</legend>
+                <label>expectedVersion *
+                  <input v-model.number="closeF.expectedVersion" type="number" min="0" required />
+                </label>
+                <label class="span2">结案结论 *
+                  <input v-model="closeF.conclusion" required placeholder="处置结论摘要" />
+                </label>
+                <button class="primary" @click.prevent="closeIncident" :disabled="busy">结案</button>
+              </fieldset>
+            </div>
+            <div class="hint">派遣下发/回执请到「派遣/回执」页签；列表数据每次操作后自动刷新</div>
+            <pre v-if="lastResult.mutation" class="result">{{ lastResult.mutation }}</pre>
+          </template>
+        </div>
+      </div>
     </section>
 
     <!-- ============ 派遣与回执 ============ -->
@@ -216,7 +256,7 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { api, errText } from './api'
 import { operatorId } from './state'
 
@@ -262,6 +302,7 @@ async function createIncident() {
     const { data, status } = await api.post('/incidents', body)
     put('create', `HTTP ${status}\n` + JSON.stringify(data, null, 2))
     showToast(`警单已登记：${data.incidentId}（状态 ${data.status} v${data.version}）`)
+    loadList()
   } catch (e) {
     showToast(errText(e), 'err')
     put('create', 'ERROR: ' + errText(e))
@@ -272,6 +313,44 @@ async function createIncident() {
 const detail = reactive({ incidentId: '', data: null })
 const patchF = reactive({ action: 'VERIFY', expectedVersion: 0, reason: '', verifiedAddress: '', priority: '', description: '' })
 const closeF = reactive({ expectedVersion: 0, conclusion: '' })
+
+/* ---------- 警单列表（左栏） ---------- */
+const PAGE_SIZE = 50
+const listF = reactive({ items: [], total: 0, status: '', loading: false })
+async function loadList() {
+  listF.loading = true
+  try {
+    const params = { limit: PAGE_SIZE, offset: 0 }
+    if (listF.status) params.status = listF.status
+    const { data } = await api.get('/incidents', { params })
+    listF.items = data.items || []
+    listF.total = data.total
+  } catch (e) {
+    showToast('警单列表加载失败：' + errText(e), 'err')
+  } finally { listF.loading = false }
+}
+async function listMore() {
+  listF.loading = true
+  try {
+    const params = { limit: PAGE_SIZE, offset: listF.items.length }
+    if (listF.status) params.status = listF.status
+    const { data } = await api.get('/incidents', { params })
+    listF.items = listF.items.concat(data.items || [])
+    listF.total = data.total
+  } catch (e) {
+    showToast(errText(e), 'err')
+  } finally { listF.loading = false }
+}
+function selectIncident(incidentId) {
+  detail.incidentId = incidentId
+  loadIncident()
+}
+/** 操作面板数据变化后刷新列表与详情（保持乐观锁 version 最新）。 */
+async function refreshAfterMutation() {
+  loadList()
+  if (detail.incidentId) await loadIncident()
+}
+onMounted(loadList)
 
 async function loadIncident() {
   busy.value = true
@@ -295,7 +374,7 @@ async function patchIncident() {
     const { data } = await api.patch(`/incidents/${detail.incidentId.trim()}`, body)
     put('mutation', JSON.stringify(data, null, 2))
     showToast(`PATCH 成功：${data.status} v${data.version}`)
-    detail.incidentId && loadIncident()
+    await refreshAfterMutation()
   } catch (e) {
     showToast(errText(e), 'err'); put('mutation', 'ERROR: ' + errText(e))
   } finally { busy.value = false }
@@ -308,7 +387,7 @@ async function closeIncident() {
       { expectedVersion: closeF.expectedVersion, conclusion: closeF.conclusion })
     put('mutation', JSON.stringify(data, null, 2))
     showToast(`结案成功：${data.status} v${data.version}`)
-    loadIncident()
+    await refreshAfterMutation()
   } catch (e) {
     showToast(errText(e), 'err'); put('mutation', 'ERROR: ' + errText(e))
   } finally { busy.value = false }
@@ -441,6 +520,21 @@ button.primary { background: #1f5eff; border-color: #1f5eff; color: #fff; }
 button:disabled { opacity: .55; cursor: not-allowed; }
 .result { background: #0d1b2a; color: #9ad1ff; padding: 12px; border-radius: 8px; font-size: 12px; overflow-x: auto; max-height: 320px; white-space: pre-wrap; }
 .tbl { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+.tbl th, .tbl td { border: 1px solid #dbe3ee; padding: 6px 10px; text-align: left; }
+.tbl th { background: #f2f6fc; }
+.detail-layout { display: grid; grid-template-columns: 340px 1fr; gap: 18px; align-items: start; }
+@media (max-width: 900px) { .detail-layout { grid-template-columns: 1fr; } }
+.list-pane { background: #fbfcfe; border: 1px solid #dbe3ee; border-radius: 8px; padding: 10px; }
+.list-pane .tbl { margin-top: 0; }
+.list-pane td, .list-pane th { padding: 5px 6px; }
+.tbl tbody tr.selected { background: #e8f0ff; outline: 1px solid #1f5eff inset; }
+.st { font-size: 11px; padding: 2px 6px; border-radius: 4px; white-space: nowrap; }
+.st.PENDING_VERIFICATION { background: #fff3d6; color: #8a6100; }
+.st.ACCEPTED { background: #e1f0ff; color: #0b5cc7; }
+.st.DISPATCHING { background: #ffe8ec; color: #c01b41; }
+.st.PENDING_REVIEW { background: #ece7ff; color: #5b34c4; }
+.st.CLOSED { background: #e2efe4; color: #1f7a33; }
+.st.CANCELLED { background: #ececec; color: #666; }
 .tbl th, .tbl td { border: 1px solid #dbe3ee; padding: 6px 10px; text-align: left; }
 .tbl th { background: #f2f6fc; }
 .toast { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); padding: 10px 22px; border-radius: 8px; font-size: 14px; z-index: 9; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
