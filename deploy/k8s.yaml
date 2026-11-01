@@ -9,6 +9,80 @@ kind: Namespace
 metadata:
   name: alarm110
 ---
+# Seata 事务协调器（TC）：单节点 file 存储/registry，事务组映射由客户端 file.conf 决定
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: seata-server-config
+  namespace: alarm110
+data:
+  application.yml: |
+    spring:
+      application:
+        name: seata-server
+    seata:
+      config:
+        type: file
+      registry:
+        type: file
+      store:
+        mode: file
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seata-server
+  namespace: alarm110
+  labels:
+    app: seata-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: seata-server
+  template:
+    metadata:
+      labels:
+        app: seata-server
+    spec:
+      containers:
+        - name: seata-server
+          image: apache/seata-server:2.2.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8091
+            - containerPort: 7091
+          volumeMounts:
+            - name: config
+              mountPath: /seata-server/resources/application.yml
+              subPath: application.yml
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: config
+          configMap:
+            name: seata-server-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seata-server
+  namespace: alarm110
+spec:
+  selector:
+    app: seata-server
+  ports:
+    - name: rpc
+      port: 8091
+      targetPort: 8091
+    - name: console
+      port: 7091
+      targetPort: 7091
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -34,7 +108,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: alarm-server
-          image: registry.galaxy.local:30500/alarm110/alarm-server:git-b4b4d69
+          image: registry.galaxy.local:30500/alarm110/alarm-server:git-b332c9e
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
@@ -42,7 +116,9 @@ spec:
             - name: TZ
               value: Asia/Shanghai
             - name: SPRING_PROFILES_ACTIVE
-              value: k8s
+              value: k8s,sharding
+            - name: ALARM_SEATA_ENABLED
+              value: "true"
             - name: SPRING_DATASOURCE_URL
               value: jdbc:mysql://mysql.middleware.svc.cluster.local:3306/alarm110?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&connectionTimeZone=Asia/Shanghai
             - name: SPRING_DATASOURCE_USERNAME
