@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS outbox_event (
 );
 
 CREATE TABLE IF NOT EXISTS idempotency_record (
+    id              BIGINT       NOT NULL AUTO_INCREMENT PRIMARY KEY,
     scope           VARCHAR(96) NOT NULL,
     idempotency_key VARCHAR(128) NOT NULL,
     operation       VARCHAR(64) NOT NULL,
