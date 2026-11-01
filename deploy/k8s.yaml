@@ -69,6 +69,26 @@ spec:
       port: 7091
       targetPort: 7091
 ---
+# 网络策略补丁：middleware 命名空间 3h 前引入 default-deny，已有 allow-alarm110-to-middleware
+# 只放行 mysql/kafka；本条为 alarm110→redis:6379 的增量放行（同构语义，不改既有策略）
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-alarm110-middleware-redis
+  namespace: middleware
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: alarm110
+      ports:
+        - port: 6379
+          protocol: TCP
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:

@@ -117,11 +117,36 @@ alarm-server Pod (k8s+sharding profile)                     seata-server TC Pod
 | 项 | 状态 |
 |---|---|
 | 代码/配置/测试 | ✅ 已合入（本地 40 测试全绿，含 3 条分片路由回归） |
-| 镜像 | ✅ `alarm-server:git-b332c9e`（含 SS+Seata 运行时） |
-| 集群分片库 | ✅ `alarm110_0/1/sys` 已建并授权 |
-| TC 部署 | ✅ `seata-server:2.2.0`（镜像名已弃用 incubator 前缀，集群内离线搬运导入） |
-| 生产开关 | ✅ Deployment 已带 `k8s,sharding` + `ALARM_SEATA_ENABLED=true`，端到端冒烟复验见报告 |
-| 后续演进 | 扩分片：换算法计数/加库；接新表：sherable 表加进 SHARDING 规则即可 |
+| 镜像 | ✅ `alarm-server:git-c371e98` 系列迭代后的 `git-4938156`（本次运行镜像） |
+| 集群分片库 | ✅ `alarm110_0/1/sys` 三库 + 应用首启自动建表（见下"集群实测"） |
+| TC 部署 | ✅ `seata-server` Deployment（官方镜像 `apache/seata-server:2.2.0`，`STORE_MODE=file`，Service 8091 集群内） |
+| 生产开关 | ✅ Deployment 已带 `SPRING_PROFILES_ACTIVE=k8s,sharding` + `ALARM_SEATA_ENABLED=true` |
+| 集群端到端 | ✅ k3s 冒烟 27/27（分片+AT 形态，`docs/evidence/2026-11-01/k3s-smoke-shard-seata.json`） |
+
+### 5.1 集群实测证据（⚠️ 关键，请勿省略复核）
+
+- **分片分布 & 守恒**（mysql 直查三库）：
+
+  ```
+  alarm110_0.incident = 2   alarm110_1.incident = 1   （3 张警单哈希落两库）
+  alarm110_sys.outbox_event: 20 条，20 条 PUBLISHED（无 PENDING 积压）
+  alarm110_sys.idempotency_record = 17（幂等键/防重全在 sys 全局唯一）
+  ```
+- **Seata AT 全链**（TC 日志）：
+
+  ```
+  xid=10.42.3.91:8091:3702798924573778424 下 3 个分支（incident 分片库分支 + idempotency + outbox 的 sys 库分支）
+  三个分支全部 PhaseTwo_Committed；undo_log 在事务提交后立即清理（两库残留均为 0）
+  ```
+- **事务一致性实战验证**：此前 TC 未就绪期间多次 CrashLoop 的各次写入，在三库中**零残留孤儿**——
+  恰好演示了"任一分支未注册成功即失败、无半提交数据"的 AT 语义；
+- 本地 `AlarmShardingRoutingTest` 3 用例：18 张警单双分片均匀落库、单表系统/schema 无越界、防重幂等语义与单库一致。
+
+### 5.2 与旧形态的兼容
+
+回滚按钮仍在：把 Deployment 的 `SPRING_PROFILES_ACTIVE` 改回 `k8s` 并设 `ALARM_SEATA_ENABLED=false`
+即回到单库 `alarm110` 形态（数据仍在，`alarm110` 库表齐全）；分片库数据迁移回单库已按 `incident_id`
+哈希可重放，工具脚本后续补充。
 
 ## 六、验收（测试矩阵）
 
@@ -157,7 +182,27 @@ kubectl -n alarm110 rollout status deploy/alarm-server
 #   ALARM_SEATA_ENABLED:    "false"
 ```
 
-### 7.2 注意事项（实测踩坑见 §8）
+### 7.3 一次性建库脚本（生产形态首次部署 / 或从单库迁移时用）
+
+```bash
+# 1) 三库与账号授权（middleware mysql pod，root 凭据经 secret）
+CREATE DATABASE alarm110_0/1/sys ...; GRANT ...;   # 已在 2026-11-01 执行
+
+# 2) 二级索引（SS 启动脚本不做索引；MySQL 8 无 CREATE INDEX IF NOT EXISTS，按存在性判断）
+idx_dispatch_incident ON alarm110_sys.dispatch_task(incident_id)
+idx_outbox_state      ON alarm110_sys.outbox_event(state, created_at)
+idx_audit_target      ON alarm110_sys.audit_record(target_type, target_id)
+# 已于 2026-11-01 执行并验收；后续新增分片/单表照此办理
+
+# 3) undo_log 由应用启动自动建（Seata AT 官方 schema），无需手工
+```
+
+### 7.4 验收与回归
+
+```bash
+python scripts/k3s-smoke.py --base http://<node>:30085 --out docs/evidence/k3s-smoke.json   # 27 用例基线
+# 分片专项：本地 mvn -Dtest=AlarmShardingRoutingTest（H2 双库）；集群侧用 §5.1 三库直查 + TC 日志判 AT
+```
 
 1. 镜像拉取：`apache/seata-server` 是官方新名（旧 `apache/incubator-seata:v*` 与 `seataio/seata-server` 都已不可用），
    且 `docker.1panel.live` 对它 403——需 `docker pull` 后 `docker save` → 逐节点 `k3s ctr images import`；
@@ -177,7 +222,14 @@ kubectl -n alarm110 rollout status deploy/alarm-server
 | `no viable alternative at input 'IF'` / `payload CLOB` 解析失败 | SS SQL 解析器为 MySQL 方言，不认 `CREATE INDEX IF NOT EXISTS` 与 `CLOB` | schema.sql 改 VARCHAR(4096)、去掉 IF（生产索引迁到 schema-mysql.sql/建库脚本） |
 | `Table or view 'outbox_event' does not exist` |DRV 单表落点：`!SINGLE.tables` 显式列表写法未生效 | 改用 `!SINGLE.defaultDataSource: sys`（所有非分片表统一落 sys，实测生效） |
 | `routing to multiple data nodes` | 分片列名写成领域名 `incident_id`，物理列是 `id` | YAML 改 `shardingColumn: id` |
-| TC 镜像 403/不存在 | `docker.1panel.live` 拒绝该 image；`apache/incubator-seata:v2.2.0` 标签已弃用 | 用新官方仓 `apache/seata-server:2.2.0` + 集群离线搬运 |
+| `DuplicateIndexException: Index 'idx_dispatch_incident' already exists`（重启 CrashLoop） | `CREATE INDEX` 无 `IF NOT EXISTS`，SS 的 checker 直接抛错且 spring `continue-on-error` 拦不住 | 索引从 schema-mysql.sql 移出，一次性建库脚本负责（见 §7.3） |
+| `NotSupportYetException: idempotency_record needs to contain the primary key` | **Seata AT 要求参与回滚的表必须有主键**，该表原本只有唯一约束 | 补自增 `id BIGINT AUTO_INCREMENT PRIMARY KEY`（H2/MySQL 两个 schema 同步，仓储 SQL 按列名写不受影响） |
+| `Unknown column 'rollback_info' in 'field list'` | undo_log 必须用 **Seata 2.2.0 官方 schema**（`rollback_info/log_status/log_created/log_modified`），不能自造简化列 | 采用官方结构（见 ShardingStorageConfig 常量并 DROP 旧表重建） |
+| TC 起不来：`Could not resolve placeholder 'logging.file.path'` | 自造 ConfigMap 覆盖了镜像内置 application.yml，破坏其必需配置 | 改用官方 env：`STORE_MODE=file`，不挂载 yml |
+| TC 镜像 403 / `docker.io` 超时 | `docker.1panel.live` 拒绝镜像；镜像改名 `apache/seata-server:2.2.0` 后公网口径不佳 | win11 侧 Docker Desktop 配国内 registry-mirrors（`~/.docker/daemon.json`：docker.1ms.run/m.daocloud/hub.rat.dev）拉准后 `docker save` → 逐节点 `k3s ctr images import` |
+| 新 Pod `ErrImagePull`/`CreateContainerError` 且集中在 `ubuntu2404-dev` | 外部 20 分钟前加入的新 worker 节点：缺镜像且 apparmor 装载失败（`apparmor_parser: Access denied`） | 两侧工作负载 Deployment 增加 `nodeAffinity NotIn[ubuntu2404-dev]`；节点修好后移除该 affinity |
+| T02 起所有写接口 500：`can not connect to 10.43.x:8091` | `BASE/Seata` 模式下 **TC 可用性是强依赖**（TMClient 启动时必须连通），客户端 file.grouplist 指向的特征 | 集群内 svc 保活；回滚按钮见 §5.2；生产建议给 TC 做双实例（含 bib 存储升级）前不要大流量 |
+| redis 预览接口 500：`Unable to connect to redis.middleware...:6379` | 集群 3h 前引入 default-deny `NetworkPolicy` 白名单，`allow-alarm110-to-middleware` 只放 mysql/kafka | 新增 `allow-alarm110-middleware-redis`（6379 增量放行，进 git 与现网一致）；同时为 middleware 供租户一致性的映射教训：新中间件接入要核对白名单端口 |
 
 ## 九、与设计一致性
 

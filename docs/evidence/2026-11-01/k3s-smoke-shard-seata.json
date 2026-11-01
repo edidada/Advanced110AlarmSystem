@@ -1,10 +1,10 @@
 {
   "base": "http://192.168.31.77:30085",
-  "startedAt": "2026-11-01T08:27:54.868326+00:00",
-  "finishedAt": "2026-11-01T08:28:34.015727+00:00",
+  "startedAt": "2026-11-01T08:37:45.812845+00:00",
+  "finishedAt": "2026-11-01T08:38:20.958752+00:00",
   "total": 27,
-  "passed": 4,
-  "failed": 23,
+  "passed": 27,
+  "failed": 0,
   "checks": [
     {
       "id": "T01",
@@ -21,152 +21,152 @@
     {
       "id": "T02",
       "name": "POST /incidents 登记成功 201",
-      "passed": false,
-      "detail": "status=500 body={'code': 'ALM-9999', 'message': 'internal error', 'details': []}"
+      "passed": true,
+      "detail": "status=201 body={'incidentId': '89f7ef2c-942e-4687-a025-19cbaca8bd18', 'status': 'PENDING_VERIFICATION', 'version': 0}"
     },
     {
       "id": "T03",
       "name": "同 channel+sourceId 防重：返回同一警单",
-      "passed": false,
-      "detail": "status=500 id=None"
+      "passed": true,
+      "detail": "status=201 id=89f7ef2c-942e-4687-a025-19cbaca8bd18"
     },
     {
       "id": "T04a",
       "name": "同 Idempotency-Key 同请求体重放返回首次结果",
-      "passed": false,
-      "detail": "status=500 body={'code': 'ALM-9999', 'message': 'internal error', 'details': []}"
+      "passed": true,
+      "detail": "status=201 body={'incidentId': '89f7ef2c-942e-4687-a025-19cbaca8bd18', 'status': 'PENDING_VERIFICATION', 'version': 0}"
     },
     {
       "id": "T04b",
       "name": "同 Idempotency-Key 不同请求体 409",
-      "passed": false,
-      "detail": "status=500 body={'code': 'ALM-9999', 'message': 'internal error', 'details': []}"
+      "passed": true,
+      "detail": "status=409 body={'code': 'ALM-2102', 'message': 'idempotency key already used with a different request body', 'details': []}"
     },
     {
       "id": "T05",
       "name": "R02：不同操作人同键可分别建单",
-      "passed": false,
-      "detail": "status=500 id=None"
+      "passed": true,
+      "detail": "status=201 id=ffc1ad55-c727-4ddc-b94f-5f26d78ce129"
     },
     {
       "id": "T06",
-      "name": "警力 upsert unit-1e1548e7-a",
-      "passed": false,
-      "detail": "status=500"
+      "name": "3 个警力 upsert 成功",
+      "passed": true,
+      "detail": ""
     },
     {
       "id": "T06b",
       "name": "推荐预览返回按距离升序的候选",
-      "passed": false,
-      "detail": "status=500 dist=[]"
+      "passed": true,
+      "detail": "status=200 dist=[4.10261531311089, 15.0449466232232, 31.904020349092562]"
     },
     {
       "id": "T07",
       "name": "GET /incidents/{id} 详情与版本",
-      "passed": false,
-      "detail": "status=404 version=None"
+      "passed": true,
+      "detail": "status=200 version=0"
     },
     {
       "id": "T08",
       "name": "过期 expectedVersion 更新 409",
-      "passed": false,
-      "detail": "status=500 body={'code': 'ALM-9999', 'message': 'internal error', 'details': []}"
+      "passed": true,
+      "detail": "status=409 body={'code': 'ALM-1002', 'message': 'version conflict, expected version 99', 'details': []}"
     },
     {
       "id": "T09",
       "name": "核实受理 -> ACCEPTED v1",
-      "passed": false,
-      "detail": "status=500 body={'code': 'ALM-9999', 'message': 'internal error', 'details': []}"
+      "passed": true,
+      "detail": "status=200 body={'incidentId': '89f7ef2c-942e-4687-a025-19cbaca8bd18', 'status': 'ACCEPTED', 'version': 1}"
     },
     {
       "id": "T10",
       "name": "创建派遣 201 并返回任务",
-      "passed": false,
-      "detail": "status=500 body={'code': 'ALM-9999', 'message': 'internal error', 'details': []}"
+      "passed": true,
+      "detail": "status=201 body={'incidentVersion': 2, 'dispatches': [{'dispatchId': '8e791fa2-cf09-4932-b176-a60702cc9421', 'unitId': 'unit-3ad46ab8-a', 'commandId': '4d4ea8ec-8641-4874-b92b-a203760c311c', 'status': 'PENDING_CONFIRM', 'deadline': '2026-11-01T08:38:17.259751123Z', 'version': 0}, {'dispatchId': '4d13a02e-a386-485f-a673-5dc64de3f856', 'unitId': 'unit-3ad46ab8-b', 'commandId': 'f22f6805-11c3-46e7-a728-3f739354e334', 'status': 'PENDING_CONFIRM', 'deadline': '2026-11-01T08:38:17.259751123Z', 'versio"
     },
     {
       "id": "T10b",
       "name": "派遣创建幂等重放返回同一任务集",
-      "passed": false,
-      "detail": "status=500 body={'code': 'ALM-9999', 'message': 'internal error', 'details': []}"
+      "passed": true,
+      "detail": "status=201 body={'incidentVersion': 2, 'dispatches': [{'dispatchId': '8e791fa2-cf09-4932-b176-a60702cc9421', 'unitId': 'unit-3ad46ab8-a', 'commandId': '4d4ea8ec-8641-4874-b92b-a203760c311c', 'status': 'PENDING_CONFIRM', 'deadline': '2026-11-01T08:38:17.259751123Z', 'version': 0}, {'dispatchId': '4d13a02e-a386-485f-a673-5dc64de3f856', 'unitId': 'unit-3ad46ab8-b', 'commandId': 'f22f6805-11c3-46e7-a728-3f739354e334', 'status': 'PENDING_CONFIRM', 'deadline': '2026-11-01T08:38:17.259751123Z', 'versio"
     },
     {
       "id": "T11",
       "name": "派遣预占扣减 availability 100->80",
-      "passed": false,
-      "detail": "availability=None"
+      "passed": true,
+      "detail": "availability=80"
     },
     {
       "id": "T12",
       "name": "R04：活动预占期间 upsert 抬升额度被拒绝",
-      "passed": false,
-      "detail": "status=500 body={'code': 'ALM-9999', 'message': 'internal error', 'details': []}"
+      "passed": true,
+      "detail": "status=422 body={'code': 'ALM-1005', 'message': 'availability cannot be raised while an active dispatch reservation exists', 'details': []}"
     },
     {
       "id": "T13",
       "name": "接单回执 -> ACCEPTED",
-      "passed": false,
-      "detail": "status=400 body={'code': 'ALM-0901', 'message': 'commandId is required', 'details': []}"
+      "passed": true,
+      "detail": "status=200 body={'dispatchId': '8e791fa2-cf09-4932-b176-a60702cc9421', 'status': 'ACCEPTED', 'version': 1}"
     },
     {
       "id": "T14",
       "name": "R05：终端自声明 TIMEOUT 被拒绝",
       "passed": true,
-      "detail": "status=400 body={'code': 'ALM-0901', 'message': 'commandId is required', 'details': []}"
+      "detail": "status=409 body={'code': 'ALM-1003', 'message': 'dispatch transition denied: ACCEPTED -> TIMEOUT', 'details': ['TIMEOUT_BY_SYSTEM_ONLY']}"
     },
     {
       "id": "T15",
       "name": "任务1按状态机推进至 FEEDBACK_DONE 终态",
-      "passed": false,
-      "detail": "status=400 body={'code': 'ALM-0901', 'message': 'commandId is required', 'details': []}"
+      "passed": true,
+      "detail": "status=200 body={'dispatchId': '8e791fa2-cf09-4932-b176-a60702cc9421', 'status': 'FEEDBACK_DONE', 'version': 4}"
     },
     {
       "id": "T15b",
       "name": "任务2推进至 FEEDBACK_DONE 终态",
-      "passed": false,
-      "detail": "status=0 body=None"
+      "passed": true,
+      "detail": "status=200 body={'dispatchId': '4d13a02e-a386-485f-a673-5dc64de3f856', 'status': 'FEEDBACK_DONE', 'version': 4}"
     },
     {
       "id": "T16",
       "name": "全部任务终态后警单自动进入 PENDING_REVIEW",
-      "passed": false,
-      "detail": "body.status=None tasks=[]"
+      "passed": true,
+      "detail": "body.status=PENDING_REVIEW tasks=['FEEDBACK_DONE', 'FEEDBACK_DONE']"
     },
     {
       "id": "T17a",
       "name": "第二警单派遣创建成功",
-      "passed": false,
-      "detail": "status=500"
+      "passed": true,
+      "detail": "status=201"
     },
     {
       "id": "T17b",
       "name": "超时扫描把过期 PENDING_CONFIRM -> TIMEOUT（processed>=1）",
-      "passed": false,
-      "detail": "status=200 processed=0"
+      "passed": true,
+      "detail": "status=200 processed=1"
     },
     {
       "id": "T17c",
       "name": "R03：DispatchStatusChanged 事件版本与警单聚合版本单调推进",
-      "passed": false,
-      "detail": "versions=[]"
+      "passed": true,
+      "detail": "versions=[0, 1, 3]"
     },
     {
       "id": "T18",
       "name": "结案（以最新 version 提交）-> CLOSED",
-      "passed": false,
-      "detail": "status=500 body={'code': 'ALM-9999', 'message': 'internal error', 'details': []}"
+      "passed": true,
+      "detail": "status=200 body={'incidentId': '89f7ef2c-942e-4687-a025-19cbaca8bd18', 'status': 'CLOSED', 'version': 4}"
     },
     {
       "id": "T19",
       "name": "GET /audits/{type}/{id} 返回审计流水",
-      "passed": false,
-      "detail": "status=200 count=0"
+      "passed": true,
+      "detail": "status=200 count=4"
     },
     {
       "id": "T20a",
       "name": "POST /ops/outbox/run 触发补发成功",
       "passed": true,
-      "detail": "status=200 body={'processed': 0, 'ranAt': '2026-11-01T08:28:34.287290331Z'}"
+      "detail": "status=200 body={'processed': 3, 'ranAt': '2026-11-01T08:38:21.258014999Z'}"
     }
   ]
 }
