@@ -127,7 +127,7 @@ spec:
       terminationGracePeriodSeconds: 20
       containers:
         - name: alarm-web
-          image: registry.galaxy.local:30500/alarm110/alarm-web:git-SET-AT-BUILD
+          image: registry.galaxy.local:30500/alarm110/alarm-web:git-b18c23a
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
