@@ -40,20 +40,26 @@ public class ShardingStorageConfig {
 
     static final String UNDO_LOG_DDL_MYSQL = """
             CREATE TABLE IF NOT EXISTS undo_log (
-                branch_id      BIGINT        NOT NULL,
-                xid            VARCHAR(128)  NOT NULL,
-                context        VARCHAR(128)  NOT NULL,
-                roll_back_info VARCHAR(4096) NOT NULL,
-                CONSTRAINT unq_undo_log_key UNIQUE (branch_id, xid)
+                branch_id     BIGINT        NOT NULL,
+                xid           VARCHAR(128)  NOT NULL,
+                context       VARCHAR(128)  NOT NULL,
+                rollback_info LONGBLOB      NOT NULL,
+                log_status    INT           NOT NULL,
+                log_created   DATETIME(6)   NOT NULL,
+                log_modified  DATETIME(6)   NOT NULL,
+                CONSTRAINT unq_undo_log_key UNIQUE (xid, branch_id)
             ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4""";
 
     static final String UNDO_LOG_DDL_H2 = """
             CREATE TABLE IF NOT EXISTS undo_log (
-                branch_id      BIGINT        NOT NULL,
-                xid            VARCHAR(128)  NOT NULL,
-                context        VARCHAR(128)  NOT NULL,
-                roll_back_info VARCHAR(4096) NOT NULL,
-                CONSTRAINT unq_undo_log_key UNIQUE (branch_id, xid)
+                branch_id     BIGINT        NOT NULL,
+                xid           VARCHAR(128)  NOT NULL,
+                context       VARCHAR(128)  NOT NULL,
+                rollback_info VARBINARY(1048576) NOT NULL,
+                log_status    INT           NOT NULL,
+                log_created   TIMESTAMP(6)  NOT NULL,
+                log_modified  TIMESTAMP(6)  NOT NULL,
+                CONSTRAINT unq_undo_log_key UNIQUE (xid, branch_id)
             )""";
 
     @Bean

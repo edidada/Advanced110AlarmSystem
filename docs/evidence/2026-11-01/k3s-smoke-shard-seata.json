@@ -1,7 +1,7 @@
 {
   "base": "http://192.168.31.77:30085",
-  "startedAt": "2026-11-01T08:24:46.543347+00:00",
-  "finishedAt": "2026-11-01T08:25:24.330687+00:00",
+  "startedAt": "2026-11-01T08:27:54.868326+00:00",
+  "finishedAt": "2026-11-01T08:28:34.015727+00:00",
   "total": 27,
   "passed": 4,
   "failed": 23,
@@ -50,7 +50,7 @@
     },
     {
       "id": "T06",
-      "name": "警力 upsert unit-31345ec9-a",
+      "name": "警力 upsert unit-1e1548e7-a",
       "passed": false,
       "detail": "status=500"
     },
@@ -166,7 +166,7 @@
       "id": "T20a",
       "name": "POST /ops/outbox/run 触发补发成功",
       "passed": true,
-      "detail": "status=200 body={'processed': 0, 'ranAt': '2026-11-01T08:25:24.615843504Z'}"
+      "detail": "status=200 body={'processed': 0, 'ranAt': '2026-11-01T08:28:34.287290331Z'}"
     }
   ]
 }
