@@ -44,7 +44,7 @@ class Rest:
         if trace:
             headers["X-Trace-Id"] = trace
         if idem:
-            headers["X-Idempotency-Key"] = idem
+            headers["Idempotency-Key"] = idem
         data = json.dumps(body).encode() if body is not None else None
         req = urllib.request.Request(self.base + path, data=data, headers=headers, method=method)
         try:
@@ -86,13 +86,14 @@ def main():
         check("T01", f"健康分组 {name} 返回 200/UP", st == 200 and isinstance(body, dict)
               and body.get("status") == "UP", f"status={st} body={body}")
 
-    # ---------- T02 登记警单 ----------
+    # ---------- T02 登记警单（正文使用固定时间戳，保证幂等重放请求哈希一致） ----------
+    fixed_ts = "2026-11-01T00:00:00.000Z"
     st, created = r.call("POST", "/api/v1/incidents",
                          {"channel": "PHONE", "sourceId": f"src-{run}-001",
                           "priority": "HIGH", "type": "ROBBERY",
                           "description": "k3s smoke incident",
                           "location": {"x": 116.397428, "y": 39.90923, "source": "GPS",
-                                       "observedAt": iso_days_ago(0.01)}},
+                                       "observedAt": fixed_ts}},
                          OP, run, f"key-create-{run}")
     check("T02", "POST /incidents 登记成功 201", st == 201 and created.get("status") == "PENDING_VERIFICATION",
           f"status={st} body={created}")
@@ -107,13 +108,13 @@ def main():
     check("T03", "同 channel+sourceId 防重：返回同一警单", st == 201 and dup.get("incidentId") == incident_id,
           f"status={st} id={dup.get('incidentId')}")
 
-    # ---------- T04 幂等键重放返回缓存响应 / 换 body 409 ----------
+    # ---------- T04a 幂等键重放返回缓存响应 / 换 body 409 ----------
     st, replay = r.call("POST", "/api/v1/incidents",
                         {"channel": "PHONE", "sourceId": f"src-{run}-001",
                          "priority": "HIGH", "type": "ROBBERY",
                          "description": "k3s smoke incident",
                          "location": {"x": 116.397428, "y": 39.90923, "source": "GPS",
-                                      "observedAt": iso_days_ago(0.01)}},
+                                      "observedAt": fixed_ts}},
                         OP, run, f"key-create-{run}")
     check("T04a", "同 Idempotency-Key 同请求体重放返回首次结果",
           st == 201 and replay.get("incidentId") == incident_id, f"status={st} body={replay}")
@@ -179,7 +180,7 @@ def main():
                       {"expectedVersion": 1, "unitIds": units[:2], "note": "k3s smoke",
                        "deadlineSeconds": 30},
                       OP, run, f"key-disp-{run}")
-    items = (disp or {}).get("items", [])
+    items = (disp or {}).get("dispatches", [])
     check("T10", "创建派遣 201 并返回任务", st == 201 and len(items) == 2
           and all(i["status"] == "PENDING_CONFIRM" for i in items), f"status={st} body={disp}")
     dispatch_id = items[0]["dispatchId"] if items else None
@@ -191,7 +192,7 @@ def main():
                              {"expectedVersion": 1, "unitIds": units[:2], "note": "k3s smoke",
                               "deadlineSeconds": 30},
                              OP, run, f"key-disp-{run}")
-    replay_ids = [i["dispatchId"] for i in (disp_replay or {}).get("items", [])]
+    replay_ids = [i["dispatchId"] for i in (disp_replay or {}).get("dispatches", [])]
     check("T10b", "派遣创建幂等重放返回同一任务集", st == 201 and replay_ids == [i["dispatchId"] for i in items]
           and (disp_replay or {}).get("incidentVersion") == incident_v2, f"status={st} body={disp_replay}")
 
@@ -226,35 +227,51 @@ def main():
                     OP, run, f"key-selfto-{run}")
     check("T14", "R05：终端自声明 TIMEOUT 被拒绝", st in (400, 409, 422), f"status={st} body={to}")
 
-    # ---------- T15 接单->出发->到场->完成反馈，每步经回执推进，任务终态释放额度 ----------
-    seq = [("ENROUTE", f"key-en-{run}"), ("ARRIVED", f"key-arr-{run}"),
-           ("FEEDBACK_DONE", f"key-done-{run}")]
-    task_version = 1
-    st_feedback = None
-    ack_last = None
-    for target, key in seq:
-        st_feedback, ack_last = r.call("POST", f"/api/v1/dispatches/{dispatch_id}/receipts",
-                                       {"commandId": command_id, "targetStatus": target,
-                                        "expectedVersion": task_version, "note": target.lower(),
-                                        "occurredAt": iso_days_ago(0)},
-                                       OP, run, key)
-        if st_feedback != 200:
-            break
-        task_version = ack_last.get("version")
-    check("T15", "接单后按状态机推进至 FEEDBACK_DONE 终态",
-          st_feedback == 200 and (ack_last or {}).get("status") == "FEEDBACK_DONE",
-          f"status={st_feedback} body={ack_last}")
+    # ---------- T15 按 PENDING_CONFIRM -> ACCEPTED -> ENROUTE -> ARRIVED -> FEEDBACK_DONE 推进两个任务 ----------
+    def ladder(disp_id, cmd, version, start_key_suffix, op_id):
+        resp = None
+        code = None
+        for target in ("ENROUTE", "ARRIVED", "FEEDBACK_DONE"):
+            code, resp = r.call("POST", f"/api/v1/dispatches/{disp_id}/receipts",
+                                {"commandId": cmd, "targetStatus": target,
+                                 "expectedVersion": version, "note": target.lower(),
+                                 "occurredAt": iso_days_ago(0)},
+                                op_id, run, f"key-{target.lower()}-{run}-{start_key_suffix}")
+            if code != 200:
+                return code, resp
+            version = resp.get("version")
+        return code, resp
+
+    st, ack1 = ladder(dispatch_id, command_id, 1, "t1", OP)
+    check("T15", "任务1按状态机推进至 FEEDBACK_DONE 终态",
+          st == 200 and (ack1 or {}).get("status") == "FEEDBACK_DONE",
+          f"status={st} body={ack1}")
+
+    # ---------- T15b 第二派遣任务（先接单再推进），promote 需全部任务终态 ----------
+    d2id = items[1]["dispatchId"] if len(items) > 1 else None
+    d2cmd = items[1]["commandId"] if len(items) > 1 else None
+    st2_fb, ack2 = 0, None
+    if d2id:
+        st2_fb, ack2 = r.call("POST", f"/api/v1/dispatches/{d2id}/receipts",
+                              {"commandId": d2cmd, "targetStatus": "ACCEPTED",
+                               "expectedVersion": 0, "note": "accept",
+                               "occurredAt": iso_days_ago(0)},
+                              OP, run, f"key-ack-{run}-t2")
+        if st2_fb == 200:
+            st2_fb, ack2 = ladder(d2id, d2cmd, ack2.get("version"), "t2", OP)
+    check("T15b", "任务2推进至 FEEDBACK_DONE 终态",
+          st2_fb == 200 and (ack2 or {}).get("status") == "FEEDBACK_DONE",
+          f"status={st2_fb} body={ack2}")
 
     # ---------- T16 全部任务终态后警单自动进入 PENDING_REVIEW ----------
-    time.sleep(0.5)
     st, got2 = r.call("GET", f"/api/v1/incidents/{incident_id}", operator=OP, trace=run)
     statuses = [d["status"] for d in got2.get("dispatches", [])]
-    check("T16", "任务终态后警单自动进入 PENDING_REVIEW",
-          got2.get("status") == "PENDING_REVIEW" and all(s in ("FEEDBACK_DONE",) for s in statuses),
+    check("T16", "全部任务终态后警单自动进入 PENDING_REVIEW",
+          got2.get("status") == "PENDING_REVIEW" and all(s == "FEEDBACK_DONE" for s in statuses),
           f"body.status={got2.get('status')} tasks={statuses}")
 
     # ---------- T17 超时扫描（R03 相关：事件版本随 CAS 推进） ----------
-    # 新建一条独立警单 + 派遣，deadline=30s，等待过期后扫描
+    # 新建一条独立警单 + 派遣，deadline=30s，等待过期后扫描；只挂 1 个警力，避免第二任务的终态竞态
     st, inc2 = r.call("POST", "/api/v1/incidents",
                       {"channel": "DEVICE", "sourceId": f"src-{run}-003", "priority": "MEDIUM",
                        "type": "INTRUSION", "description": "timeout probe"},
@@ -268,14 +285,15 @@ def main():
                         {"expectedVersion": 1, "unitIds": [units[2]], "note": "timeout probe",
                          "deadlineSeconds": 30},
                         OP2, run, f"key-disp2-{run}")
-    d2 = (disp2.get("items") or [{}])[0]
-    check("T17a", "第二警单派遣创建成功", st2 == 201 and d2.get("dispatchId"), f"status={st2}")
+    d2_item = (disp2.get("dispatches") or [{}])[0]
+    check("T17a", "第二警单派遣创建成功", st2 == 201 and d2_item.get("dispatchId"), f"status={st2}")
     print("      ... 等待 31s 使 deadline 过期 ...")
     time.sleep(31)
     st3, scan = r.call("POST", "/api/v1/ops/dispatch-timeout/run", {"note": None}, "system-scan", run)
-    handled = (scan or {}).get("handled") if isinstance(scan, dict) else None
-    check("T17b", "超时扫描把过期 PENDING_CONFIRM -> TIMEOUT（handled>=1）", st3 == 200 and handled >= 1,
-          f"status={st3} handled={handled}")
+    handled = (scan or {}).get("processed") if isinstance(scan, dict) else 0
+    check("T17b", "超时扫描把过期 PENDING_CONFIRM -> TIMEOUT（processed>=1）",
+          st3 == 200 and (handled or 0) >= 1,
+          f"status={st3} processed={handled}")
     st4, ev2 = r.call("GET", f"/api/v1/ops/events/{inc2_id}", operator=OP2, trace=run)
     versions = [e["aggregateVersion"] for e in (ev2 or []) ]
     check("T17c", "R03：DispatchStatusChanged 事件版本与警单聚合版本单调推进",
@@ -283,10 +301,11 @@ def main():
           f"versions={versions}")
 
     # ---------- T18 结案 ----------
+    st, got3 = r.call("GET", f"/api/v1/incidents/{incident_id}", operator=OP, trace=run)
     st, closed = r.call("POST", f"/api/v1/incidents/{incident_id}/close",
-                        {"expectedVersion": got2.get("version"), "conclusion": "k3s smoke closed"},
+                        {"expectedVersion": got3.get("version"), "conclusion": "k3s smoke closed"},
                         OP, run, f"key-close-{run}")
-    check("T18", "结案 -> CLOSED", st == 200 and (closed or {}).get("status") == "CLOSED",
+    check("T18", "结案（以最新 version 提交）-> CLOSED", st == 200 and (closed or {}).get("status") == "CLOSED",
           f"status={st} body={closed}")
 
     # ---------- T19 审计查询 ----------
@@ -311,6 +330,8 @@ def main():
         "failed": sum(1 for c in CHECKS if not c["passed"]),
         "checks": CHECKS,
     }
+    import os
+    os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
     print(f"\n== 汇总: {report['passed']}/{report['total']} 通过，报告已写入 {args.out} ==")

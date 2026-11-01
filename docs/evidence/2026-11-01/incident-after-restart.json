@@ -1,0 +1,36 @@
+{
+  "incidentId": "cba1d379-6019-49a3-88c2-b42e69a05484",
+  "channel": "PHONE",
+  "sourceId": "src-47ed4273-001",
+  "status": "CLOSED",
+  "priority": "HIGH",
+  "type": "ROBBERY",
+  "description": "k3s smoke incident",
+  "verifiedAddress": "北京市东城区长安街1号",
+  "location": {
+    "x": 116.397428,
+    "y": 39.90923,
+    "source": "GPS",
+    "observedAt": "2026-11-01T00:00:00Z"
+  },
+  "conclusion": "k3s smoke closed",
+  "createdBy": "op-smoke-47ed4273",
+  "version": 4,
+  "createdAt": "2026-11-01T00:16:35.208Z",
+  "updatedAt": "2026-11-01T00:17:07.552Z",
+  "closedAt": "2026-11-01T00:17:07.552Z",
+  "dispatches": [
+    {
+      "dispatchId": "06dda1b4-8a20-46cc-bf41-0bb294dcbf7a",
+      "unitId": "unit-47ed4273-b",
+      "status": "FEEDBACK_DONE",
+      "version": 4
+    },
+    {
+      "dispatchId": "cfc80119-1746-4262-823a-a84c943e9b4b",
+      "unitId": "unit-47ed4273-a",
+      "status": "FEEDBACK_DONE",
+      "version": 4
+    }
+  ]
+}

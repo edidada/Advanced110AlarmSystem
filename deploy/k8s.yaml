@@ -34,7 +34,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: alarm-server
-          image: registry.galaxy.local:30500/alarm110/alarm-server:git-REPLACED_BY_BUILD
+          image: registry.galaxy.local:30500/alarm110/alarm-server:git-33c67bc
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
