@@ -100,3 +100,71 @@ spec:
       port: 8080
       targetPort: 8080
       nodePort: 30085
+---
+# 前端：Vue3 + Vite 产物，nginx 静态托管并把 /api/ 反代到 alarm-server（集群内 DNS 直连，无需 NodePort 硬编码）
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alarm-web
+  namespace: alarm110
+  labels:
+    app: alarm-web
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: alarm-web
+  template:
+    metadata:
+      labels:
+        app: alarm-web
+    spec:
+      terminationGracePeriodSeconds: 20
+      containers:
+        - name: alarm-web
+          image: registry.galaxy.local:30500/alarm110/alarm-web:git-SET-AT-BUILD
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /index.html
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /index.html
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+      imagePullSecrets:
+        - name: galaxy-registry
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alarm-web
+  namespace: alarm110
+spec:
+  type: NodePort
+  selector:
+    app: alarm-web
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      nodePort: 30086
