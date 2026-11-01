@@ -1,0 +1,73 @@
+# k8s 部署 profile（SPRING_PROFILES_ACTIVE=k8s 启用）：
+#   * 关系库 -> middleware 命名空间的 mysql（MySQL 8 方言 schema-mysql.sql）
+#   * 读缓存 -> middleware 命名空间的 redis（recommendation-preview，短 TTL）
+#   * 事件总线 -> middleware 命名空间的 kafka（alarm.bus.events，见 KafkaEventPublisher）
+#   * actuator health 分组探针（readiness/liveness），中间件抖动不误摘 Pod（见下注释）
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql.middleware.svc.cluster.local:3306/alarm110?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&connectionTimeZone=Asia/Shanghai}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${SPRING_DATASOURCE_USERNAME:alarm110}
+    password: ${ALARM_DATASOURCE_PASSWORD:}
+    hikari:
+      maximum-pool-size: 8
+      minimum-idle: 2
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-mysql.sql
+      # MySQL 8 无 CREATE INDEX IF NOT EXISTS，副本滚动重复初始化按既有索引报错跳过；
+      # 表/唯一约束全部 IF NOT EXISTS，真实故障仍会在业务写入时以 500 暴露并在报告中核对
+      continue-on-error: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis.middleware.svc.cluster.local}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${ALARM_REDIS_PASSWORD:}
+      timeout: 2s
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka.middleware.svc.cluster.local:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        max.block.ms: 5000
+
+alarm:
+  event-bus:
+    type: ${ALARM_EVENT_BUS_TYPE:kafka}
+  unit-location-stale-seconds: ${ALARM_UNIT_LOCATION_STALE_SECONDS:120}
+  dispatch-default-deadline-seconds: ${ALARM_DISPATCH_DEFAULT_TIMEOUT_SECONDS:60}
+  outbox-batch-size: ${ALARM_OUTBOX_BATCH_SIZE:100}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        # liveness 只看进程自身；readiness 增加 db（MySQL 是强依赖）。
+        # 故意排除 redis/kafka：读缓存有短 TTL 降级、事件有 PENDING 补发语义，
+        # 两者抖动时应用仍能正确服务，不应摘除流量（galaxy-mall order 聚合健康误摘的教训）。
+        liveness:
+          include: livenessState,ping
+        readiness:
+          include: readinessState,diskSpace,db
+
+logging:
+  level:
+    alarm.event-bus: INFO

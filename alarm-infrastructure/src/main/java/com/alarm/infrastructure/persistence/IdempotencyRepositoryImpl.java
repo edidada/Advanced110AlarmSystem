@@ -17,7 +17,7 @@ import java.util.Optional;
 public class IdempotencyRepositoryImpl implements IdempotencyRepository {
 
     private static final RowMapper<IdempotencyRecord> MAPPER = (rs, i) -> new IdempotencyRecord(
-            rs.getString("scope"), rs.getString("key"), rs.getString("operation"),
+            rs.getString("scope"), rs.getString("idempotency_key"), rs.getString("operation"),
             rs.getString("request_hash"), rs.getString("response_body"), toInt(rs.getObject("response_status")),
             IdempotencyState.valueOf(rs.getString("state")), toInstant(rs.getTimestamp("created_at")));
 
@@ -29,14 +29,14 @@ public class IdempotencyRepositoryImpl implements IdempotencyRepository {
 
     @Override
     public Optional<IdempotencyRecord> find(String scope, String key) {
-        return jdbc.query("SELECT * FROM idempotency_record WHERE scope = ? AND \"key\" = ?",
+        return jdbc.query("SELECT * FROM idempotency_record WHERE scope = ? AND idempotency_key = ?",
                 MAPPER, scope, key).stream().findFirst();
     }
 
     @Override
     public boolean tryInsertReserved(IdempotencyRecord record) {
         try {
-            jdbc.update("INSERT INTO idempotency_record (scope, \"key\", operation, request_hash, response_body, response_status, state, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            jdbc.update("INSERT INTO idempotency_record (scope, idempotency_key, operation, request_hash, response_body, response_status, state, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     record.getScope(), record.getKey(), record.getOperation(), record.getRequestHash(),
                     record.getResponseBody(), record.getResponseStatus(), record.getState().name(),
                     Timestamp.from(record.getCreatedAt()));
@@ -50,7 +50,7 @@ public class IdempotencyRepositoryImpl implements IdempotencyRepository {
     public void markCompleted(String scope, String key, int responseStatus, String responseBody, Instant at) {
         jdbc.update("""
                         UPDATE idempotency_record SET state = 'COMPLETED', response_status = ?,
-                            response_body = ? WHERE scope = ? AND "key" = ?
+                            response_body = ? WHERE scope = ? AND idempotency_key = ?
                         """,
                 responseStatus, responseBody, scope, key);
     }

@@ -69,14 +69,14 @@ CREATE INDEX IF NOT EXISTS idx_outbox_state ON outbox_event(state, created_at);
 
 CREATE TABLE IF NOT EXISTS idempotency_record (
     scope           VARCHAR(96) NOT NULL,
-    "key"           VARCHAR(128) NOT NULL,
+    idempotency_key VARCHAR(128) NOT NULL,
     operation       VARCHAR(64) NOT NULL,
     request_hash    VARCHAR(64) NOT NULL,
     response_body   CLOB,
     response_status INT,
     state           VARCHAR(12) NOT NULL,
     created_at      TIMESTAMP   NOT NULL,
-    CONSTRAINT uk_idempotency UNIQUE (scope, "key")
+    CONSTRAINT uk_idempotency UNIQUE (scope, idempotency_key)
 );
 
 CREATE TABLE IF NOT EXISTS audit_record (

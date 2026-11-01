@@ -16,6 +16,7 @@ import com.alarm.domain.model.UnitStatus;
 import com.alarm.domain.exception.IllegalRequestException;
 import com.alarm.domain.exception.NotFoundException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,7 +80,12 @@ public class UnitService {
                 });
     }
 
-    /** 候选推荐：只读；中心点取 incident 定位或显式坐标；范围 (0, 10000] 米。 */
+    /**
+     * 候选推荐：只读；中心点取 incident 定位或显式坐标；范围 (0, 10000] 米。
+     * k8s 部署时该结果经 Redis 缓存（TTL 15s，见 CacheConfig），advisory 接口允许短时陈旧；
+     * 单测/本地（无 @EnableCaching）注解不生效，行为与原实现一致。
+     */
+    @Cacheable(cacheNames = "recommendation-preview")
     @Transactional(readOnly = true)
     public RecommendationPreviewResponse preview(RecommendationPreviewRequest request) {
         if (request == null || (request.incidentId() == null && request.location() == null)) {
