@@ -103,7 +103,7 @@ spec:
                     values: [ubuntu2404-dev]
       containers:
         - name: alarm-server
-          image: registry.galaxy.local:30500/alarm110/alarm-server:git-b332c9e
+          image: registry.galaxy.local:30500/alarm110/alarm-server:git-9393300
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
