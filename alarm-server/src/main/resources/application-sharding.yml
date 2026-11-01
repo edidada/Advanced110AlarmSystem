@@ -1,0 +1,15 @@
+# 分库分表 profile（SPRING_PROFILES_ACTIVE=k8s,sharding 启用）：
+#   * 物理拓扑 = middleware/mysql 同实例 3 schema：alarm110_0 / alarm110_1 / alarm110_sys
+#     （建库语句见 docs/seata应用与分库分表说明.md 部署章节；可平滑平移到独立实例）
+#   * Seata AT 由 ALARM_SEATA_ENABLED 控制；TC = seata-server.alarm110.svc.cluster.local:8091
+#     （file 注册/file 存储，客户端 grouplist 见 classpath:file.conf）
+alarm:
+  storage:
+    sharding:
+      ds-0-url: ${ALARM_DS0_URL:jdbc:mysql://mysql.middleware.svc.cluster.local:3306/alarm110_0?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&connectionTimeZone=Asia/Shanghai}
+      ds-1-url: ${ALARM_DS1_URL:jdbc:mysql://mysql.middleware.svc.cluster.local:3306/alarm110_1?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&connectionTimeZone=Asia/Shanghai}
+      sys-url: ${ALARM_SYS_URL:jdbc:mysql://mysql.middleware.svc.cluster.local:3306/alarm110_sys?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&connectionTimeZone=Asia/Shanghai}
+      username: ${SPRING_DATASOURCE_USERNAME:alarm110}
+      password: ${ALARM_DATASOURCE_PASSWORD:}
+      seata-enabled: ${ALARM_SEATA_ENABLED:false}
+      maximum-pool-size: ${ALARM_SHARDING_POOL_SIZE:4}

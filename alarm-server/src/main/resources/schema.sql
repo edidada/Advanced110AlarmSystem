@@ -37,7 +37,8 @@ CREATE TABLE IF NOT EXISTS dispatch_task (
     updated_at  TIMESTAMP   NOT NULL,
     CONSTRAINT uk_dispatch_command UNIQUE (command_id)
 );
-CREATE INDEX IF NOT EXISTS idx_dispatch_incident ON dispatch_task(incident_id);
+-- 索引统一在生产建库脚本/MySQL 方言（schema-mysql.sql、sharding 部署脚本）创建：
+-- ShardingSphere 逻辑 SQL 解析器不支持 H2 风格 CREATE INDEX 元数据检查，且测试库量级无需索引。
 
 CREATE TABLE IF NOT EXISTS unit_status (
     unit_id          VARCHAR(64) PRIMARY KEY,
@@ -59,20 +60,19 @@ CREATE TABLE IF NOT EXISTS outbox_event (
     aggregate_type    VARCHAR(24) NOT NULL,
     aggregate_id      VARCHAR(36) NOT NULL,
     aggregate_version BIGINT      NOT NULL,
-    payload           CLOB        NOT NULL,
+    payload           VARCHAR(4096) NOT NULL,
     trace_id          VARCHAR(64),
     state             VARCHAR(12) NOT NULL,
     created_at        TIMESTAMP   NOT NULL,
     published_at      TIMESTAMP
 );
-CREATE INDEX IF NOT EXISTS idx_outbox_state ON outbox_event(state, created_at);
 
 CREATE TABLE IF NOT EXISTS idempotency_record (
     scope           VARCHAR(96) NOT NULL,
     idempotency_key VARCHAR(128) NOT NULL,
     operation       VARCHAR(64) NOT NULL,
     request_hash    VARCHAR(64) NOT NULL,
-    response_body   CLOB,
+    response_body   VARCHAR(4096),
     response_status INT,
     state           VARCHAR(12) NOT NULL,
     created_at      TIMESTAMP   NOT NULL,
@@ -88,4 +88,4 @@ CREATE TABLE IF NOT EXISTS audit_record (
     detail      VARCHAR(512),
     occurred_at TIMESTAMP   NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_record(target_type, target_id);
+
