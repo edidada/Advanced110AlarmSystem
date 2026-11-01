@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS dispatch_task (
     updated_at  DATETIME(3) NOT NULL,
     CONSTRAINT uk_dispatch_command UNIQUE (command_id)
 );
-CREATE INDEX idx_dispatch_incident ON dispatch_task(incident_id);
+-- 索引由一次性建库脚本创建（本 SQL 每次启动经 SS 解析重复执行，CREATE INDEX 无 IF NOT EXISTS 会中止初始化）
 
 CREATE TABLE IF NOT EXISTS unit_status (
     unit_id          VARCHAR(64) PRIMARY KEY,
@@ -71,7 +71,6 @@ CREATE TABLE IF NOT EXISTS outbox_event (
     created_at        DATETIME(3) NOT NULL,
     published_at      DATETIME(3)
 );
-CREATE INDEX idx_outbox_state ON outbox_event(state, created_at);
 
 CREATE TABLE IF NOT EXISTS idempotency_record (
     scope           VARCHAR(96) NOT NULL,
@@ -94,4 +93,3 @@ CREATE TABLE IF NOT EXISTS audit_record (
     detail      VARCHAR(512),
     occurred_at DATETIME(3) NOT NULL
 );
-CREATE INDEX idx_audit_target ON audit_record(target_type, target_id);

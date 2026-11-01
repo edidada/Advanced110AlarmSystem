@@ -7,27 +7,7 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: alarm110
----
-# Seata 事务协调器（TC）：单节点 file 存储/registry，事务组映射由客户端 file.conf 决定
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: seata-server-config
-  namespace: alarm110
-data:
-  application.yml: |
-    spring:
-      application:
-        name: seata-server
-    seata:
-      config:
-        type: file
-      registry:
-        type: file
-      store:
-        mode: file
----
+  name: alarm110---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -45,27 +25,33 @@ spec:
       labels:
         app: seata-server
     spec:
+      # ubuntu2404-dev（外部新加入节点）apparmor 装载失败，暂不承载 TC；环境修复后移除 affinity
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [ubuntu2404-dev]
       containers:
         - name: seata-server
           image: apache/seata-server:2.2.0
           imagePullPolicy: IfNotPresent
+          env:
+            - name: STORE_MODE
+              value: file
           ports:
             - containerPort: 8091
             - containerPort: 7091
-          volumeMounts:
-            - name: config
-              mountPath: /seata-server/resources/application.yml
-              subPath: application.yml
           resources:
             requests:
               cpu: 100m
               memory: 512Mi
             limits:
               memory: 1Gi
-      volumes:
-        - name: config
-          configMap:
-            name: seata-server-config
+      volumes: []
+
 ---
 apiVersion: v1
 kind: Service
@@ -106,6 +92,15 @@ spec:
         app: alarm-server
     spec:
       terminationGracePeriodSeconds: 30
+      # ubuntu2404-dev（外部新加入节点）镜像源/apparmor 环境未就绪，暂不承载工作负载
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: [ubuntu2404-dev]
       containers:
         - name: alarm-server
           image: registry.galaxy.local:30500/alarm110/alarm-server:git-b332c9e
