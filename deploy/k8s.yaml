@@ -34,7 +34,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: alarm-server
-          image: registry.galaxy.local:30500/alarm110/alarm-server:git-33c67bc
+          image: registry.galaxy.local:30500/alarm110/alarm-server:git-b4b4d69
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
@@ -127,7 +127,7 @@ spec:
       terminationGracePeriodSeconds: 20
       containers:
         - name: alarm-web
-          image: registry.galaxy.local:30500/alarm110/alarm-web:git-b18c23a
+          image: registry.galaxy.local:30500/alarm110/alarm-web:git-b4b4d69
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
